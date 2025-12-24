@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { deleteItem } from '@/lib/actions/item-management-actions'
 import { Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ItemsTableProps {
   items: any[]
@@ -13,13 +23,23 @@ interface ItemsTableProps {
 
 export function ItemsTable({ items }: ItemsTableProps) {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; itemId: string | null; itemName: string }>({
+    open: false,
+    itemId: null,
+    itemName: '',
+  })
 
-  const handleDelete = async (itemId: string, itemName: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus "${itemName}"?`)) return
+  const handleDeleteClick = (itemId: string, itemName: string) => {
+    setDeleteDialog({ open: true, itemId, itemName })
+  }
 
-    setDeleteLoading(itemId)
-    const result = await deleteItem(itemId)
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.itemId) return
+
+    setDeleteLoading(deleteDialog.itemId)
+    const result = await deleteItem(deleteDialog.itemId)
     setDeleteLoading(null)
+    setDeleteDialog({ open: false, itemId: null, itemName: '' })
 
     if (result.error) {
       toast.error(result.error)
@@ -138,7 +158,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
                       </Button>
                     </Link>
                     <Button
-                      onClick={() => handleDelete(item.id, item.name)}
+                      onClick={() => handleDeleteClick(item.id, item.name)}
                       disabled={deleteLoading === item.id}
                       size="sm"
                       className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
@@ -153,6 +173,26 @@ export function ItemsTable({ items }: ItemsTableProps) {
           })}
         </tbody>
       </table>
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !deleteLoading && setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Barang</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus "{deleteDialog.itemName}"? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
