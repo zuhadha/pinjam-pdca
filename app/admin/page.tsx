@@ -50,17 +50,6 @@ export default async function AdminDashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Menunggu Persetujuan</CardTitle>
-            <Clock className="h-5 w-5 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{stats.pendingCount}</div>
-            <p className="text-xs text-gray-600 mt-1">Perlu review</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Verifikasi Pengembalian</CardTitle>
             <CheckCircle className="h-5 w-5 text-blue-600" />
           </CardHeader>

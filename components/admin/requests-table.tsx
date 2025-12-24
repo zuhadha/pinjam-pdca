@@ -2,15 +2,10 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { id as idLocale } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { 
-  approveBorrowRequest, 
-  rejectBorrowRequest, 
-  verifyReturn 
-} from '@/lib/actions/admin-actions'
+import { verifyReturn } from '@/lib/actions/admin-actions'
 
 interface RequestsTableProps {
   requests: any[]
@@ -21,44 +16,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
 
-  const handleApprove = async (requestId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menyetujui permintaan ini?')) return
-
-    setActionLoading(requestId)
-    const result = await approveBorrowRequest(requestId, adminNotes)
-    setActionLoading(null)
-
-    if (result.error) {
-      toast.error(result.error)
-    } else {
-      toast.success(result.message || 'Permintaan berhasil disetujui')
-      setAdminNotes('')
-      setExpandedId(null)
-    }
-  }
-
-  const handleReject = async (requestId: string) => {
-    if (!adminNotes.trim()) {
-      toast.error('Alasan penolakan harus diisi')
-      return
-    }
-
-    if (!confirm('Apakah Anda yakin ingin menolak permintaan ini?')) return
-
-    setActionLoading(requestId)
-    const result = await rejectBorrowRequest(requestId, adminNotes)
-    setActionLoading(null)
-
-    if (result.error) {
-      toast.error(result.error)
-    } else {
-      toast.success(result.message || 'Permintaan berhasil ditolak')
-      setAdminNotes('')
-      setExpandedId(null)
-    }
-  }
-
-  const handleVerifyReturn = async (requestId: string) => {
+  const handleVerifyReturn = async (requestId: string) =>{
     if (!confirm('Apakah Anda yakin barang sudah dikembalikan dengan baik?')) return
 
     setActionLoading(requestId)
@@ -87,7 +45,6 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     <div className="space-y-4">
       {requests.map((request) => {
         const isExpanded = expandedId === request.id
-        const needsApproval = request.status === 'pending'
         const needsVerification = request.return_declared_at && !request.return_verified_at
 
         return (
@@ -161,11 +118,11 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                   </div>
                 )}
 
-                {/* Admin Notes Input (for actions) */}
-                {(needsApproval || needsVerification || request.status === 'pending') && (
+                {/* Admin Notes Input (for verification only) */}
+                {needsVerification && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Catatan Admin {request.status === 'pending' && needsApproval ? '(Opsional)' : ''}
+                      Catatan Admin (Opsional)
                     </label>
                     <textarea
                       value={adminNotes}
@@ -178,26 +135,6 @@ export function RequestsTable({ requests }: RequestsTableProps) {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  {needsApproval && (
-                    <>
-                      <Button
-                        onClick={() => handleApprove(request.id)}
-                        variant="primary"
-                        disabled={actionLoading === request.id}
-                        className="flex-1"
-                      >
-                        {actionLoading === request.id ? 'Memproses...' : '✓ Setujui'}
-                      </Button>
-                      <Button
-                        onClick={() => handleReject(request.id)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                        disabled={actionLoading === request.id}
-                      >
-                        {actionLoading === request.id ? 'Memproses...' : '✗ Tolak'}
-                      </Button>
-                    </>
-                  )}
-
                   {needsVerification && (
                     <Button
                       onClick={() => handleVerifyReturn(request.id)}
