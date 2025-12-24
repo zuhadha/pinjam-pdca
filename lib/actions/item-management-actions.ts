@@ -156,20 +156,25 @@ export async function deleteItem(itemId: string) {
   }
 
   try {
-    // Check if item is currently borrowed
-    const { count } = await supabase
-      .from('borrow_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('item_id', itemId)
-      .in('request_id',
-        supabase
-          .from('borrow_requests')
-          .select('id')
-          .in('status', ['approved', 'borrowed'])
-      )
+    // Get active borrow request IDs
+    const { data: activeRequests } = await supabase
+      .from('borrow_requests')
+      .select('id')
+      .in('status', ['approved', 'borrowed'])
 
-    if (count && count > 0) {
-      return { error: 'Tidak bisa menghapus barang yang sedang dipinjam' }
+    const activeRequestIds = activeRequests?.map(r => r.id) || []
+
+    // Check if item is currently borrowed
+    if (activeRequestIds.length > 0) {
+      const { count } = await supabase
+        .from('borrow_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('item_id', itemId)
+        .in('request_id', activeRequestIds)
+
+      if (count && count > 0) {
+        return { error: 'Tidak bisa menghapus barang yang sedang dipinjam' }
+      }
     }
 
     // Soft delete
