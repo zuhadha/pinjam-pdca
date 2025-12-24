@@ -1,61 +1,89 @@
 'use client'
 
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 
 interface MagicBentoProps {
   children: React.ReactNode
   className?: string
-  glowColor?: string
 }
 
-export function MagicBento({ 
-  children, 
-  className = '', 
-  glowColor = 'rgba(59, 130, 246, 0.5)' // blue-500 by default
-}: MagicBentoProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [isHovered, setIsHovered] = useState(false)
+// Global mouse position state
+let globalMouseX = 0
+let globalMouseY = 0
+
+// Track all card elements
+const cards = new Set<HTMLDivElement>()
+
+// Setup global mouse tracking once
+if (typeof window !== 'undefined') {
+  let isTracking = false
+  
+  const trackMouse = () => {
+    if (isTracking) return
+    isTracking = true
+    
+    document.addEventListener('mousemove', (e) => {
+      globalMouseX = e.clientX
+      globalMouseY = e.clientY
+      
+      // Update all cards
+      cards.forEach(card => {
+        const rect = card.getBoundingClientRect()
+        const x = globalMouseX - rect.left
+        const y = globalMouseY - rect.top
+        
+        // Calculate distance from mouse to card
+        const distance = Math.sqrt(
+          Math.pow(Math.max(0, Math.max(x, rect.width - x)), 2) +
+          Math.pow(Math.max(0, Math.max(y, rect.height - y)), 2)
+        )
+        
+        // Show glow if mouse is within 600px radius
+        if (distance < 600) {
+          card.style.setProperty('--mouse-x', `${x}px`)
+          card.style.setProperty('--mouse-y', `${y}px`)
+          card.style.setProperty('--opacity', String(Math.max(0, 1 - distance / 600)))
+        } else {
+          card.style.setProperty('--opacity', '0')
+        }
+      })
+    })
+  }
+  
+  trackMouse()
+}
+
+export function MagicBento({ children, className = '' }: MagicBentoProps) {
+  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const card = cardRef.current
+    if (!card) return
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect()
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      })
-    }
-
-    const handleMouseEnter = () => setIsHovered(true)
-    const handleMouseLeave = () => setIsHovered(false)
-
-    container.addEventListener('mousemove', handleMouseMove)
-    container.addEventListener('mouseenter', handleMouseEnter)
-    container.addEventListener('mouseleave', handleMouseLeave)
+    // Register card
+    cards.add(card)
 
     return () => {
-      container.removeEventListener('mousemove', handleMouseMove)
-      container.removeEventListener('mouseenter', handleMouseEnter)
-      container.removeEventListener('mouseleave', handleMouseLeave)
+      // Unregister card on cleanup
+      cards.delete(card)
     }
   }, [])
 
   return (
     <div
-      ref={containerRef}
-      className={`relative ${className}`}
+      ref={cardRef}
+      className={`group relative ${className}`}
       style={{
-        background: isHovered
-          ? `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, ${glowColor}, transparent 40%)`
-          : 'transparent',
+        background: `
+          radial-gradient(
+            800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+            rgba(59, 130, 246, calc(var(--opacity, 0) * 0.15)),
+            transparent 40%
+          )
+        `,
       }}
     >
-      <div className="relative z-10 h-full w-full">
-        {children}
-      </div>
+      {children}
     </div>
   )
 }
