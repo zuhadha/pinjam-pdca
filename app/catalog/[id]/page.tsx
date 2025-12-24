@@ -72,7 +72,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
                 )}
                 {item.is_sensitive && (
                   <span className="text-sm bg-secondary-100 text-secondary-700 px-3 py-1 rounded font-medium">
-                    🔒 Sensitif
+                    Sensitif
                   </span>
                 )}
                 <span className={`text-sm px-3 py-1 rounded font-medium ${
