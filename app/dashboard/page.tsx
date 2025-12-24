@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ReturnButton } from '@/components/dashboard/return-button'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
+import { Badge } from '@/components/ui/badge'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -110,14 +111,14 @@ export default async function DashboardPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
-                          request.return_declared_at ? 'bg-blue-100 text-blue-700' :
-                          request.status === 'approved' || request.status === 'borrowed' ? 'bg-green-100 text-green-700' :
-                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          request.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          request.status === 'returned' ? 'bg-gray-100 text-gray-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
+                        <Badge variant={
+                          request.return_declared_at ? 'blue' :
+                          request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                          request.status === 'pending' ? 'warning' :
+                          request.status === 'rejected' ? 'destructive' :
+                          request.status === 'returned' ? 'gray' :
+                          'gray'
+                        }>
                           {request.return_declared_at ? '🔄 Menunggu Verifikasi' :
                            request.status === 'approved' ? '✓ Disetujui' :
                            request.status === 'borrowed' ? '📦 Sedang Dipinjam' :
@@ -125,7 +126,7 @@ export default async function DashboardPage() {
                            request.status === 'rejected' ? '✗ Ditolak' :
                            request.status === 'returned' ? '✓ Dikembalikan' :
                            request.status}
-                        </span>
+                        </Badge>
                       </div>
                       <p className="text-sm text-gray-500">
                         {format(new Date(request.created_at), 'dd MMM yyyy', { locale: idLocale })}

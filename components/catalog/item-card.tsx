@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Item } from '@/lib/actions/item-actions'
+import { Badge } from '@/components/ui/badge'
 
 interface ItemCardProps {
   item: Item
@@ -37,23 +38,19 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
         {/* Category and Status Badges */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           {item.category && (
-            <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded font-medium flex items-center gap-1">
+            <Badge variant="default" className="flex items-center gap-1">
               <span>{item.category.icon}</span>
               {item.category.name}
-            </span>
+            </Badge>
           )}
           {item.is_sensitive && (
-            <span className="text-xs bg-secondary-100 text-secondary-700 px-2 py-1 rounded font-medium">
+            <Badge variant="secondary">
               {sensitiveLabel}
-            </span>
+            </Badge>
           )}
-          <span className={`text-xs px-2 py-1 rounded font-medium ${
-            isAvailable 
-              ? 'bg-green-100 text-green-700' 
-              : 'bg-red-100 text-red-700'
-          }`}>
+          <Badge variant={isAvailable ? 'success' : 'destructive'}>
             {isAvailable ? '✓ Tersedia' : '✗ Tidak Tersedia'}
-          </span>
+          </Badge>
         </div>
 
         {/* Item Name */}
