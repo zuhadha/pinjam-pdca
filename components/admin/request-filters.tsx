@@ -1,6 +1,13 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const statusOptions = [
   { value: '', label: 'Semua Status' },
@@ -66,18 +73,18 @@ export function RequestFilters() {
           <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
             Status
           </label>
-          <select
-            id="status"
-            value={currentStatus}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <Select value={currentStatus} onValueChange={handleStatusChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Reset Button */}

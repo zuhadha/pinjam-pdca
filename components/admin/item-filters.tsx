@@ -1,6 +1,13 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface ItemFiltersProps {
   categories: any[]
@@ -60,19 +67,19 @@ export function ItemFilters({ categories }: ItemFiltersProps) {
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
             Kategori
           </label>
-          <select
-            id="category"
-            value={currentCategory}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-          >
-            <option value="">Semua Kategori</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.icon} {cat.name}
-              </option>
-            ))}
-          </select>
+          <Select value={currentCategory} onValueChange={handleCategoryChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Semua Kategori</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.icon} {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Reset Button */}

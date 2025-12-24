@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createItem, updateItem } from '@/lib/actions/item-management-actions'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface ItemFormProps {
   categories: any[]
@@ -102,20 +109,18 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
           {/* Category */}
           <div>
             <Label htmlFor="category">Kategori *</Label>
-            <select
-              id="category"
-              value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-            >
-              <option value="">Pilih kategori...</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </select>
+            <Select value={formData.category_id} onValueChange={(value) => setFormData({ ...formData, category_id: value })} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kategori..." />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Stock */}

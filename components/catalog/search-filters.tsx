@@ -3,6 +3,13 @@
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Category } from '@/lib/actions/item-actions'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface SearchFiltersProps {
   categories: Category[]
@@ -75,29 +82,29 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
               Kategori
             </label>
-            <select
-              id="category"
-              value={categoryId}
-              onChange={(e) => {
-                setCategoryId(e.target.value)
-                // Auto-apply when changed
-                const params = new URLSearchParams()
-                if (search) params.set('search', search)
-                if (e.target.value) params.set('category', e.target.value)
-                if (availableOnly) params.set('available', 'true')
-                startTransition(() => {
-                  router.push(`/catalog?${params.toString()}`)
-                })
-              }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-            >
-              <option value="">Semua Kategori</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </select>
+            <Select value={categoryId} onValueChange={(value) => {
+              setCategoryId(value)
+              // Auto-apply when changed
+              const params = new URLSearchParams()
+              if (search) params.set('search', search)
+              if (value) params.set('category', value)
+              if (availableOnly) params.set('available', 'true')
+              startTransition(() => {
+                router.push(`/catalog?${params.toString()}`)
+              })
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Semua Kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Semua Kategori</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Available Only Toggle */}

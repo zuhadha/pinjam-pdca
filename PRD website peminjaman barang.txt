@@ -1,0 +1,395 @@
+Berikut adalah **PRD FINAL, TANPA OPSI**, dirancang khusus untuk **Next.js + Supabase**, sesuai requirement Anda.
+PRD ini lengkap, sistematis, dan langsung bisa menjadi acuan development hingga deployment.
+
+---
+
+# 📘 **PRODUCT REQUIREMENTS DOCUMENT (PRD)**
+
+## **Aplikasi Peminjaman Barang Internal Kantor**
+
+**Versi:** Final
+**Target User:** ±200 internal staff
+**Platform:** Web App
+**Stack Final:**
+
+* **Frontend:** Next.js 15 (App Router), Tailwind CSS, shadcn/ui
+* **Backend:** Supabase (Auth + Database + Storage + Edge Functions)
+* **DB:** Supabase PostgreSQL
+* **Storage:** Supabase Storage
+* **Deployment:** Vercel
+
+---
+
+# 1. **OBJECTIVE**
+
+Membangun aplikasi internal yang memudahkan karyawan untuk:
+
+* Melihat katalog barang kantor
+* Melakukan peminjaman barang
+* Admin mengelola barang & memonitor peminjaman
+* Menampilkan dashboard analitik penggunaan barang
+
+Sistem harus **responsif, mudah digunakan, aman**, dan cukup **scalable untuk 200 pengguna**.
+
+---
+
+# 2. **USER ROLES**
+
+## **1. Guest (tanpa login)**
+
+* Akses landing page
+* Melihat katalog snippet di landing page
+* Membuka halaman katalog barang
+* Melihat status barang (tersedia / tidak)
+* Mengklik “Pinjam Barang” → diarahkan ke login
+
+## **2. User (logged-in employee)**
+* Mengakses katalog lengkap
+* Melihat detail barang
+* Mengirim permohonan peminjaman barang
+* Melihat status permohonan
+* Mengembalikan barang (via button return)
+
+## **3. Admin**
+* Semua fitur user
+* CRUD katalog barang
+* Melihat dashboard analitik
+* Melihat semua riwayat peminjaman
+* Mengapprove / menolak permohonan peminjaman
+* Melihat barang yang overdue
+* Melihat statistik dan grafik penggunaan
+
+---
+
+# 3. **HALAMAN UTAMA**
+# **3.1 Landing Page**
+**Tujuan:** memberikan informasi dasar sebelum user login.
+### **Sections**
+#### A. Hero Section
+* Judul
+* Subjudul
+* CTA: “Lihat Barang Tersedia”
+
+#### B. Rules Peminjaman
+* Daftar aturan peminjaman barang (fix, static content)
+* Format bullet points
+
+#### C. Snippet Katalog Barang
+* Menampilkan **4–6 barang** acak atau populer
+* Informasi: nama barang, kategori, status ketersediaan, foto
+* Tombol **“Pinjam Barang”**
+
+  * Jika belum login = redirect login
+  * Jika login = buka form peminjaman
+
+#### D. QnA Section
+* FAQ sederhana (accordion)
+
+### **Akses**
+* Bisa diakses semua user, tanpa login
+
+---
+
+# **3.2 Halaman Katalog Barang**
+
+## **Features:**
+
+* Search bar (search by name, category)
+* Filter kategori
+* Filter status (available / borrowed)
+* Daftar barang dalam bentuk card grid
+* Card menampilkan:
+
+  * Foto
+  * Nama
+  * Kategori
+  * Jumlah unit tersedia
+  * Status: Available, Borrowed, Maintenance
+  * Button “Pinjam”
+
+### **Flow ketika user klik “Pinjam”:**
+
+* Jika belum login → redirect login
+* Jika login → tampilkan form peminjaman (modal)
+
+  * tanggal pinjam
+  * tanggal kembali
+  * keperluan
+  * catatan tambahan
+
+---
+
+# **3.3 Halaman Kelola Barang (Admin Only)**
+
+### **Akses:**
+
+* Hanya admin
+* Berbasis **layout dashboard** dengan sidebar
+
+### Isi:
+
+## A. Dashboard Overview
+
+* Total barang
+* Total kategori
+* Barang dalam keadaan dipinjam
+* Barang rusak/maintenance
+* Shortcut ke Kelola Barang dan Riwayat Peminjaman
+
+## B. Menu Kelola Barang (CRUD)
+
+### **Fitur:**
+
+* Melihat list barang (table)
+* CRUD lengkap:
+
+  * Create Barang
+  * Edit Barang
+  * Upload foto barang (Supabase Storage)
+  * Soft delete barang (`is_active = false`)
+* Field barang:
+
+  * id
+  * nama
+  * deskripsi
+  * kategori
+  * stok_total
+  * stok_available
+  * lokasi penyimpanan
+  * foto_url
+  * status default = available
+
+---
+
+# **3.4 Dashboard Analitik (Admin)**
+
+## **Tujuan:** memberikan insight penggunaan aset kantor.
+
+### **Grafik & Data:**
+
+1. **Barang paling sering dipinjam** (bar chart)
+2. **Jumlah peminjaman per bulan** (line chart)
+3. **Kategori barang yang paling diminati**
+4. **Barang yang sering overdue**
+5. **Persentase ketersediaan barang**
+6. **Average time borrowed per item**
+
+### **Halaman Tambahan Admin**
+
+* **Daftar pengajuan peminjaman**
+
+  * approve / reject
+* **Daftar barang sedang dipinjam**
+
+  * status overdue
+* **Riwayat peminjaman barang**
+
+---
+
+# 4. **FITUR INTI APLIKASI**
+
+## **4.1 Peminjaman Barang**
+
+### Flow:
+
+1. User memilih barang
+2. Input form:
+
+   * tanggal pinjam
+   * tanggal kembali
+   * keperluan
+   * catatan
+3. Sistem memvalidasi:
+
+   * stok available > 0
+4. Admin menerima request
+5. Admin approve / reject
+6. Jika approve:
+
+   * stok_available -= 1
+7. Setelah user mengembalikan:
+
+   * stok_available += 1
+   * admin verifikasi pengembalian
+
+## **4.2 Status barang:**
+
+* Available
+* Borrowed
+* Maintenance
+* Lost
+* Inactive
+
+---
+
+# 5. **DATABASE DESIGN (LEVEL KONSEPTUAL)**
+
+(Disesuaikan dengan Supabase PostgreSQL)
+
+### **1. users**
+
+* id
+* email
+* name
+* role (user/admin)
+* created_at
+
+### **2. items**
+
+Barang kantor
+
+* id
+* name
+* description
+* category
+* stok_total
+* stok_available
+* location
+* photo_url
+* status (available, maintenance, inactive)
+* created_at
+
+### **3. borrow_requests**
+
+Permohonan peminjaman
+
+* id
+* user_id
+* item_id
+* start_date
+* end_date
+* purpose
+* note
+* status (pending, approved, rejected, borrowed, done, overdue)
+* admin_note
+* created_at
+* updated_at
+
+### **4. borrow_logs**
+
+Record setiap perubahan status
+
+* id
+* request_id
+* status
+* timestamp
+
+### **5. analytics_cache** *(opsional, tapi recommended)*
+
+* date
+* borrow_count
+* popular_items
+* etc.
+
+---
+
+# 6. **NON-FUNCTIONAL REQUIREMENT**
+
+## **Security**
+
+* Auth by Supabase Auth
+* RBAC via Supabase policies
+* Admin protected routes with RLS
+* Prevent double booking via DB constraint
+* File upload validated (only jpg/png)
+
+## **Performance**
+
+* Query katalog ≤ 150 ms
+* Dashboard analytics ≤ 200 ms
+* Image CDN via Supabase
+
+## **Scalability**
+
+* 200 pengguna aktif
+* up to 5K borrow_logs per tahun
+* index search di name & category
+
+---
+
+# 7. **UI/UX REQUIREMENTS**
+
+* Menggunakan shadcn komponen (standar)
+* Light/dark mode optional
+* Layout dashboard menggunakan sidebar fixed
+* Form peminjaman berbasis modal
+* Admin table sortable + pagination
+
+---
+
+# 8. **FLOW SISTEM**
+
+## **1. Borrow Flow**
+
+```
+User → pilih barang → form pinjam → request dibuat → admin approve → barang dipinjam → user kembalikan → admin verifikasi → selesai
+```
+
+## **2. Dashboard Analitik**
+
+* dihitung berdasarkan borrow_logs
+* diambil dengan server actions atau supabase functions
+
+---
+
+# 9. **MILESTONE / PHASE DEVELOPMENT**
+
+### **Phase 1 — Setup**
+
+* Next.js project
+* Supabase integration
+* Auth
+* DB setup + tables
+
+### **Phase 2 — Landing Page**
+
+* Hero
+* Rules
+* QnA
+* Snippet barang
+* CTA
+
+### **Phase 3 — Katalog Barang**
+
+* Search
+* Filter
+* Card grid
+* Modal peminjaman
+* Integrasi Supabase
+
+### **Phase 4 — Admin System**
+
+* Auth admin
+* Halaman kelola barang
+* CRUD barang
+* Upload foto
+
+### **Phase 5 — Borrow System**
+
+* Create request
+* Admin approve/reject
+* Pengembalian barang
+* Status update
+
+### **Phase 6 — Dashboard Analitik**
+
+* Grafik peminjaman
+* List peminjaman
+* Overdue tracker
+
+### **Phase 7 — Testing, QA, Deployment**
+
+* Integration test
+* Deploy Vercel + domain internal
+
+---
+
+# 10. **SUCCESS METRICS**
+
+| Metric                     | Target     |
+| -------------------------- | ---------- |
+| Waktu pengajuan peminjaman | < 10 detik |
+| Load katalog               | < 2 detik  |
+| Load dashboard             | < 3 detik  |
+| Akurasi stok               | 100%       |
+| Error rate                 | < 0.1%     |
