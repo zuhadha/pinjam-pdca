@@ -48,9 +48,8 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       }
     }
 
-    // Determine if request needs approval (any sensitive item)
-    const hasSensitiveItem = items?.some(item => item.is_sensitive) || false
-    const status = hasSensitiveItem ? 'pending' : 'approved'
+    // All items are immediately borrowed (no approval needed)
+    const status = 'borrowed'
 
     // Create borrow request
     const { data: borrowRequest, error: requestError } = await supabase
@@ -62,6 +61,8 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         purpose: input.purpose,
         notes: input.notes,
         status: status,
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
       })
       .select()
       .single()
@@ -87,27 +88,17 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       return { error: 'Failed to add items to request' }
     }
 
-    // If auto-approved, update stock immediately
-    if (status === 'approved') {
-      for (const requestItem of input.items) {
-        const item = items?.find(i => i.id === requestItem.itemId)
-        if (item) {
-          await supabase
-            .from('items')
-            .update({
-              stock_available: item.stock_available - requestItem.quantity
-            })
-            .eq('id', item.id)
-        }
+    // Update stock immediately (all items are borrowed)
+    for (const requestItem of input.items) {
+      const item = items?.find(i => i.id === requestItem.itemId)
+      if (item) {
+        await supabase
+          .from('items')
+          .update({
+            stock_available: item.stock_available - requestItem.quantity
+          })
+          .eq('id', item.id)
       }
-
-      // Create log entry
-      await supabase.from('borrow_logs').insert({
-        request_id: borrowRequest.id,
-        action: 'approved',
-        performed_by: user.id,
-        notes: 'Auto-approved (no sensitive items)',
-      })
     }
 
     revalidatePath('/catalog')
@@ -117,9 +108,7 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       success: true,
       requestId: borrowRequest.id,
       status: status,
-      message: status === 'approved'
-        ? 'Permintaan peminjaman berhasil disetujui!'
-        : 'Permintaan peminjaman menunggu persetujuan admin.'
+      message: 'Peminjaman berhasil! Barang sudah bisa diambil.'
     }
   } catch (error) {
     console.error('Error creating borrow request:', error)

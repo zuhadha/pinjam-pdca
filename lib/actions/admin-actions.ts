@@ -25,17 +25,11 @@ export async function getAdminStats() {
       .from('categories')
       .select('*', { count: 'exact', head: true })
 
-    // Currently borrowed (approved + borrowed status)
+    // Currently borrowed (borrowed status only)
     const { count: borrowedCount } = await supabase
       .from('borrow_requests')
       .select('*', { count: 'exact', head: true })
-      .in('status', ['approved', 'borrowed'])
-
-    // Pending requests
-    const { count: pendingCount } = await supabase
-      .from('borrow_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'borrowed')
 
     // Awaiting verification (return declared)
     const { count: verificationCount } = await supabase
@@ -60,7 +54,6 @@ export async function getAdminStats() {
       totalItems: totalItems || 0,
       totalCategories: totalCategories || 0,
       borrowedCount: borrowedCount || 0,
-      pendingCount: pendingCount || 0,
       verificationCount: verificationCount || 0,
       lowStockCount,
     }
@@ -122,130 +115,6 @@ export async function getAllBorrowRequests(filters?: {
   }
 
   return data || []
-}
-
-// Approve borrow request
-export async function approveBorrowRequest(requestId: string, adminNotes?: string) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
-
-  if (!user || user.role !== 'admin') {
-    return { error: 'Unauthorized' }
-  }
-
-  try {
-    // Get request details
-    const { data: request, error: requestError } = await supabase
-      .from('borrow_requests')
-      .select('*, borrow_items(item_id, quantity)')
-      .eq('id', requestId)
-      .single()
-
-    if (requestError || !request) {
-      return { error: 'Request not found' }
-    }
-
-    // Update request status
-    const { error: updateError } = await supabase
-      .from('borrow_requests')
-      .update({
-        status: 'approved',
-        admin_notes: adminNotes,
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-      })
-      .eq('id', requestId)
-
-    if (updateError) {
-      return { error: 'Failed to approve request' }
-    }
-
-    // Update stock for each item
-    for (const borrowItem of request.borrow_items || []) {
-      const { data: item } = await supabase
-        .from('items')
-        .select('stock_available')
-        .eq('id', borrowItem.item_id)
-        .single()
-
-      if (item) {
-        await supabase
-          .from('items')
-          .update({
-            stock_available: item.stock_available - borrowItem.quantity
-          })
-          .eq('id', borrowItem.item_id)
-      }
-    }
-
-    // Create log
-    await supabase.from('borrow_logs').insert({
-      request_id: requestId,
-      old_status: request.status,
-      new_status: 'approved',
-      changed_by: user.id,
-      notes: adminNotes || 'Request approved by admin',
-    })
-
-    revalidatePath('/admin')
-    revalidatePath('/admin/requests')
-
-    return { success: true, message: 'Permintaan berhasil disetujui' }
-  } catch (error) {
-    console.error('Error approving request:', error)
-    return { error: 'An unexpected error occurred' }
-  }
-}
-
-// Reject borrow request
-export async function rejectBorrowRequest(requestId: string, adminNotes: string) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
-
-  if (!user || user.role !== 'admin') {
-    return { error: 'Unauthorized' }
-  }
-
-  try {
-    const { data: request, error: fetchError } = await supabase
-      .from('borrow_requests')
-      .select('status')
-      .eq('id', requestId)
-      .single()
-
-    if (fetchError || !request) {
-      return { error: 'Request not found' }
-    }
-
-    const { error } = await supabase
-      .from('borrow_requests')
-      .update({
-        status: 'rejected',
-        admin_notes: adminNotes,
-      })
-      .eq('id', requestId)
-
-    if (error) {
-      return { error: 'Failed to reject request' }
-    }
-
-    // Create log
-    await supabase.from('borrow_logs').insert({
-      request_id: requestId,
-      old_status: request.status,
-      new_status: 'rejected',
-      changed_by: user.id,
-      notes: adminNotes,
-    })
-
-    revalidatePath('/admin')
-    revalidatePath('/admin/requests')
-
-    return { success: true, message: 'Permintaan berhasil ditolak' }
-  } catch (error) {
-    console.error('Error rejecting request:', error)
-    return { error: 'An unexpected error occurred' }
-  }
 }
 
 // Verify return
