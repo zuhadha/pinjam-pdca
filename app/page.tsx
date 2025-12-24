@@ -28,13 +28,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        <div className="absolute inset-0 -z-10">
-          <img 
-            src="/hero-img.jpg" 
-            alt="Hero background" 
-            className="w-full h-full object-cover opacity-85"
-          />
-        </div>
       </section>
 
       {/* Rules Section */}
