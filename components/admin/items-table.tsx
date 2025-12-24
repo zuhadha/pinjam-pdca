@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 
 interface ItemsTableProps {
   items: any[]
@@ -115,10 +116,10 @@ export function ItemsTable({ items }: ItemsTableProps) {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded text-sm">
-                    <span>{item.category?.icon}</span>
+                  <Badge variant="default" className="min-w-[120px] justify-center">
+                    {/* <span>{item.category?.icon}</span> */}
                     <span>{item.category?.name || '-'}</span>
-                  </span>
+                  </Badge>
                 </td>
                 <td className="px-6 py-4">
                   <div>
@@ -133,19 +134,19 @@ export function ItemsTable({ items }: ItemsTableProps) {
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
                     {item.is_sensitive && (
-                      <span className="inline-block px-2 py-1 bg-secondary-100 text-secondary-700 rounded text-xs font-medium w-fit">
-                        🔒 Sensitif
-                      </span>
+                      <Badge variant="secondary" className="min-w-[50px] justify-center">
+                        Sensitif
+                      </Badge>
                     )}
                     {!item.is_active && (
-                      <span className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium w-fit">
-                        ✗ Tidak Aktif
-                      </span>
+                      <Badge variant="destructive" className="min-w-[50px] justify-center">
+                        Tidak Aktif
+                      </Badge>
                     )}
                     {item.stock_available === 0 && item.is_active && (
-                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium w-fit">
+                      <Badge variant="gray" className="min-w-[50px] justify-center">
                         Habis
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 </td>

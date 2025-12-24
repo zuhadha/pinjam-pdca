@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Package, FileText, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 
 export default async function AdminDashboardPage() {
@@ -121,22 +122,22 @@ export default async function AdminDashboardPage() {
                 <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 rounded text-xs font-medium ${
-                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                        request.status === 'approved' || request.status === 'borrowed' ? 'bg-green-100 text-green-700' :
-                        request.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                      <Badge variant={
+                        request.status === 'pending' ? 'warning' :
+                        request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                        request.status === 'rejected' ? 'destructive' :
+                        'gray'
+                      }>
                         {request.status === 'pending' ? 'Pending' :
                          request.status === 'approved' ? 'Approved' :
                          request.status === 'borrowed' ? 'Borrowed' :
                          request.status === 'rejected' ? 'Rejected' :
                          request.status}
-                      </span>
+                      </Badge>
                       {request.return_declared_at && !request.return_verified_at && (
-                        <span className="px-3 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                        <Badge variant="blue">
                           Perlu Verifikasi
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <p className="font-medium text-gray-900">{request.user?.name}</p>

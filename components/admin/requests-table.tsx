@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { 
   approveBorrowRequest, 
@@ -101,13 +102,13 @@ export function RequestsTable({ requests }: RequestsTableProps) {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-3 py-1 rounded text-sm font-medium ${
-                    needsVerification ? 'bg-blue-100 text-blue-700' :
-                    request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    request.status === 'approved' || request.status === 'borrowed' ? 'bg-green-100 text-green-700' :
-                    request.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
+                  <Badge variant={
+                    needsVerification ? 'blue' :
+                    request.status === 'pending' ? 'warning' :
+                    request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                    request.status === 'rejected' ? 'destructive' :
+                    'gray'
+                  }>
                     {needsVerification ? '🔄 Verifikasi Return' :
                      request.status === 'pending' ? '⏳ Pending' :
                      request.status === 'approved' ? '✓ Approved' :
@@ -115,7 +116,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                      request.status === 'rejected' ? '✗ Ditolak' :
                      request.status === 'returned' ? '✓ Dikembalikan' :
                      request.status}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="font-semibold text-gray-900">{request.user?.name} ({request.user?.nik})</p>
                 <p className="text-sm text-gray-600">{request.purpose}</p>

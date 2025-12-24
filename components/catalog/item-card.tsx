@@ -9,7 +9,7 @@ interface ItemCardProps {
 
 export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
   const isAvailable = item.stock_available > 0
-  const sensitiveLabel = item.is_sensitive ? '🔒 Sensitif' : ''
+  const sensitiveLabel = item.is_sensitive ? 'Sensitif' : ''
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -39,7 +39,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           {item.category && (
             <Badge variant="default" className="flex items-center gap-1">
-              <span>{item.category.icon}</span>
+              {/* <span>{item.category.icon}</span> */}
               {item.category.name}
             </Badge>
           )}
@@ -49,7 +49,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
             </Badge>
           )}
           <Badge variant={isAvailable ? 'success' : 'destructive'}>
-            {isAvailable ? '✓ Tersedia' : '✗ Tidak Tersedia'}
+            {isAvailable ? 'Tersedia' : 'Tidak Tersedia'}
           </Badge>
         </div>
 
