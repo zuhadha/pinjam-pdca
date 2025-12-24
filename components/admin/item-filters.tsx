@@ -67,12 +67,11 @@ export function ItemFilters({ categories }: ItemFiltersProps) {
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
             Kategori
           </label>
-          <Select value={currentCategory} onValueChange={handleCategoryChange}>
+          <Select value={currentCategory || undefined} onValueChange={(value) => handleCategoryChange(value || '')}>
             <SelectTrigger>
               <SelectValue placeholder="Semua Kategori" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Semua Kategori</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.icon} {cat.name}

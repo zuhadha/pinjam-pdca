@@ -73,12 +73,12 @@ export function RequestFilters() {
           <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
             Status
           </label>
-          <Select value={currentStatus} onValueChange={handleStatusChange}>
+          <Select value={currentStatus || undefined} onValueChange={(value) => handleStatusChange(value || '')}>
             <SelectTrigger>
               <SelectValue placeholder="Semua Status" />
             </SelectTrigger>
             <SelectContent>
-              {statusOptions.map((option) => (
+              {statusOptions.slice(1).map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

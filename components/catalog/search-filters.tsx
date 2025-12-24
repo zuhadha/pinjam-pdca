@@ -82,8 +82,8 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
               Kategori
             </label>
-            <Select value={categoryId} onValueChange={(value) => {
-              setCategoryId(value)
+            <Select value={categoryId || undefined} onValueChange={(value) => {
+              setCategoryId(value || '')
               // Auto-apply when changed
               const params = new URLSearchParams()
               if (search) params.set('search', search)
@@ -97,7 +97,6 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
                 <SelectValue placeholder="Semua Kategori" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Kategori</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.icon} {cat.name}
