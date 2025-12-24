@@ -5,6 +5,7 @@ import { useState } from 'react'
 import type { Item } from '@/lib/actions/item-actions'
 import { Badge } from '@/components/ui/badge'
 import { BorrowModal } from '@/components/borrow/borrow-modal'
+import { MagicBento } from '@/components/ui/magic-bento'
 
 interface ItemCardProps {
   item: Item
@@ -18,7 +19,8 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+      <MagicBento className="rounded-lg p-[1px]" glowColor="rgba(59, 130, 246, 0.3)">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow h-full">
         {/* Item Image */}
         <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
           {item.photo_url ? (
@@ -109,7 +111,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
             </div>
           )}
         </div>
-      </div>
+      </MagicBento>
 
       {/* Borrow Modal */}
       {showModal && (
