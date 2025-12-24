@@ -17,15 +17,15 @@ Dokumentasi ini menjelaskan cara mengatur Supabase Auth agar user tetap logged i
 2. Login dengan akun Supabase Anda
 3. Pilih project yang digunakan untuk sistem peminjaman barang
 
-### 2. Navigasi ke Authentication Settings
+### 2. Navigasi ke Sessions Settings
 
 1. Di sidebar kiri, klik **"Authentication"**
-2. Klik tab **"Settings"** (atau **"Configuration"**)
-3. Scroll ke bagian **"Security and Protection"**
+2. Di bawah section **"CONFIGURATION"**, klik **"Sessions"**
+3. Anda akan melihat halaman Session Configuration
 
 ### 3. Configure JWT Settings
 
-Atur konfigurasi berikut:
+Di halaman Sessions, Anda akan menemukan beberapa field yang perlu diatur:
 
 #### **JWT Expiry (Access Token)**
 ```
