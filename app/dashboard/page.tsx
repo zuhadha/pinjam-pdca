@@ -1,8 +1,12 @@
 import { getCurrentUser } from '@/lib/auth/actions'
+import { getUserBorrowRequests } from '@/lib/actions/borrow-actions'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ReturnButton } from '@/components/dashboard/return-button'
+import { format } from 'date-fns'
+import { id as idLocale } from 'date-fns/locale'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -15,6 +19,13 @@ export default async function DashboardPage() {
   if (user.role === 'admin') {
     redirect('/admin')
   }
+
+  const borrowRequests = await getUserBorrowRequests(user.id)
+
+  // Count stats
+  const activeBorrows = borrowRequests.filter(r => r.status === 'approved' || r.status === 'borrowed').length
+  const pendingRequests = borrowRequests.filter(r => r.status === 'pending').length
+  const returnDeclared = borrowRequests.filter(r => r.status === 'return_declared').length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,7 +69,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-4">
-                <p className="text-4xl font-bold text-primary-600">0</p>
+                <p className="text-4xl font-bold text-primary-600">{activeBorrows}</p>
                 <p className="text-sm text-gray-600 mt-1">Peminjaman Aktif</p>
               </div>
             </CardContent>
@@ -76,14 +87,14 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-4">
-                <p className="text-4xl font-bold text-secondary-600">0</p>
+                <p className="text-4xl font-bold text-secondary-600">{pendingRequests}</p>
                 <p className="text-sm text-gray-600 mt-1">Pengajuan Pending</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Activity */}
+        {/* Borrow Requests List */}
         <Card>
           <CardHeader>
             <CardTitle>Riwayat Peminjaman</CardTitle>
@@ -92,15 +103,91 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">📝</div>
-              <p className="text-gray-600 mb-4">Belum ada riwayat peminjaman</p>
-              <Link href="/catalog">
-                <Button variant="outline">
-                  Mulai Pinjam Barang
-                </Button>
-              </Link>
-            </div>
+            {borrowRequests.length > 0 ? (
+              <div className="space-y-4">
+                {borrowRequests.map((request) => (
+                  <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
+                          request.return_declared_at ? 'bg-blue-100 text-blue-700' :
+                          request.status === 'approved' || request.status === 'borrowed' ? 'bg-green-100 text-green-700' :
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          request.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          request.status === 'returned' ? 'bg-gray-100 text-gray-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {request.return_declared_at ? '🔄 Menunggu Verifikasi' :
+                           request.status === 'approved' ? '✓ Disetujui' :
+                           request.status === 'borrowed' ? '📦 Sedang Dipinjam' :
+                           request.status === 'pending' ? '⏳ Menunggu Persetujuan' :
+                           request.status === 'rejected' ? '✗ Ditolak' :
+                           request.status === 'returned' ? '✓ Dikembalikan' :
+                           request.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(request.created_at), 'dd MMM yyyy', { locale: idLocale })}
+                      </p>
+                    </div>
+
+                    {/* Items */}
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Barang:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {request.borrow_items?.map((bi: any) => (
+                          <span key={bi.id} className="inline-flex items-center gap-1 bg-gray-100 px-3 py-1 rounded text-sm">
+                            <span>{bi.item?.category?.icon || '📦'}</span>
+                            <span>{bi.item?.name}</span>
+                            <span className="text-gray-600">x{bi.quantity}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
+                      <div>
+                        <span className="text-gray-600">Tanggal:</span>
+                        <p className="font-medium text-gray-900">
+                          {format(new Date(request.start_date), 'dd MMM yyyy', { locale: idLocale })} - {format(new Date(request.end_date), 'dd MMM yyyy', { locale: idLocale })}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Keperluan:</span>
+                        <p className="font-medium text-gray-900">{request.purpose}</p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    {!request.return_declared_at && (request.status === 'approved' || request.status === 'borrowed') && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <ReturnButton requestId={request.id} />
+                      </div>
+                    )}
+
+                    {request.return_declared_at && !request.return_verified_at && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm text-blue-700 bg-blue-50 p-3 rounded">
+                          ℹ️ Pengembalian barang Anda sedang menunggu verifikasi admin.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">📝</div>
+                <p className="text-gray-600 mb-4">Belum ada riwayat peminjaman</p>
+                <Link href="/catalog">
+                  <Button variant="outline">
+                    Mulai Pinjam Barang
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
 
