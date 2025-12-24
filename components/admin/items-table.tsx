@@ -1,0 +1,157 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { deleteItem } from '@/lib/actions/item-management-actions'
+import { Edit, Trash2 } from 'lucide-react'
+
+interface ItemsTableProps {
+  items: any[]
+}
+
+export function ItemsTable({ items }: ItemsTableProps) {
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+
+  const handleDelete = async (itemId: string, itemName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${itemName}"?`)) return
+
+    setDeleteLoading(itemId)
+    const result = await deleteItem(itemId)
+    setDeleteLoading(null)
+
+    if (result.error) {
+      alert('Error: ' + result.error)
+    } else {
+      alert(result.message)
+    }
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <div className="text-6xl mb-4">📦</div>
+        <p>Tidak ada barang ditemukan</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Barang
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Kategori
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Stok
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Aksi
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {items.map((item) => {
+            const stockPercentage = item.stock_total > 0 
+              ? (item.stock_available / item.stock_total) * 100 
+              : 0
+            const isLowStock = stockPercentage < 20 && item.stock_total > 0
+
+            return (
+              <tr key={item.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    {item.photo_url ? (
+                      <img
+                        src={item.photo_url}
+                        alt={item.name}
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center text-2xl">
+                        {item.category?.icon || '📦'}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900">{item.name}</p>
+                      {item.description && (
+                        <p className="text-sm text-gray-600 truncate max-w-xs">
+                          {item.description}
+                        </p>
+                      )}
+                      {item.location && (
+                        <p className="text-xs text-gray-500">📍 {item.location}</p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded text-sm">
+                    <span>{item.category?.icon}</span>
+                    <span>{item.category?.name || '-'}</span>
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {item.stock_available} / {item.stock_total}
+                    </p>
+                    {isLowStock && (
+                      <p className="text-xs text-red-600 font-medium">⚠️ Stok Menipis</p>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-1">
+                    {item.is_sensitive && (
+                      <span className="inline-block px-2 py-1 bg-secondary-100 text-secondary-700 rounded text-xs font-medium w-fit">
+                        🔒 Sensitif
+                      </span>
+                    )}
+                    {!item.is_active && (
+                      <span className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium w-fit">
+                        ✗ Tidak Aktif
+                      </span>
+                    )}
+                    {item.stock_available === 0 && item.is_active && (
+                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium w-fit">
+                        Habis
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <Link href={`/admin/items/edit/${item.id}`}>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      onClick={() => handleDelete(item.id, item.name)}
+                      disabled={deleteLoading === item.id}
+                      size="sm"
+                      className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deleteLoading === item.id ? 'Hapus...' : 'Hapus'}
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
