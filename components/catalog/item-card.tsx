@@ -111,6 +111,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
             </div>
           )}
         </div>
+      </div>
       </MagicBento>
 
       {/* Borrow Modal */}
