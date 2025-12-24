@@ -4,9 +4,21 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 text-white">
+      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 text-white min-h-[600px] flex items-center">
+        {/* Background Image */}
+        <div className="absolute inset-0 -z-20">
+          <img 
+            src="/hero-img.jpg" 
+            alt="Hero background" 
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 -z-10 bg-black/50"></div>
+        
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 w-full">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
               Sistem Peminjaman Barang
