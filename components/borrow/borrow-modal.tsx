@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createBorrowRequest, type BorrowRequestItem } from '@/lib/actions/borrow-actions'
+import { toast } from 'sonner'
 
 interface BorrowModalProps {
   initialItems?: Array<{ id: string; name: string; stock_available: number }>
@@ -66,10 +67,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       setError(result.error)
       setLoading(false)
     } else {
+      toast.success(result.message)
       onClose()
       router.push('/dashboard')
-      // Show success message
-      alert(result.message)
     }
   }
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { deleteItem } from '@/lib/actions/item-management-actions'
 import { Edit, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ItemsTableProps {
   items: any[]
@@ -21,9 +22,9 @@ export function ItemsTable({ items }: ItemsTableProps) {
     setDeleteLoading(null)
 
     if (result.error) {
-      alert('Error: ' + result.error)
+      toast.error(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message || 'Barang berhasil dihapus')
     }
   }
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import { 
   approveBorrowRequest, 
   rejectBorrowRequest, 
@@ -27,9 +28,9 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     setActionLoading(null)
 
     if (result.error) {
-      alert('Error: ' + result.error)
+      toast.error(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message || 'Permintaan berhasil disetujui')
       setAdminNotes('')
       setExpandedId(null)
     }
@@ -37,7 +38,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
 
   const handleReject = async (requestId: string) => {
     if (!adminNotes.trim()) {
-      alert('Alasan penolakan harus diisi')
+      toast.error('Alasan penolakan harus diisi')
       return
     }
 
@@ -48,9 +49,9 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     setActionLoading(null)
 
     if (result.error) {
-      alert('Error: ' + result.error)
+      toast.error(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message || 'Permintaan berhasil ditolak')
       setAdminNotes('')
       setExpandedId(null)
     }
@@ -64,9 +65,9 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     setActionLoading(null)
 
     if (result.error) {
-      alert('Error: ' + result.error)
+      toast.error(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message || 'Pengembalian berhasil diverifikasi')
       setAdminNotes('')
       setExpandedId(null)
     }

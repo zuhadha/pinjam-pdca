@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { declareBorrowReturn } from '@/lib/actions/borrow-actions'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface ReturnButtonProps {
   requestId: string
@@ -20,9 +21,9 @@ export function ReturnButton({ requestId }: ReturnButtonProps) {
     const result = await declareBorrowReturn(requestId)
 
     if (result.error) {
-      alert('Error: ' + result.error)
+      toast.error(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message)
     }
     setLoading(false)
   }

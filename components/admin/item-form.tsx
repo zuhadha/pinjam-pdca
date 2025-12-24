@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
 
 interface ItemFormProps {
   categories: any[]
@@ -70,7 +71,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
     if (result.error) {
       setError(result.error)
     } else {
-      alert(result.message)
+      toast.success(result.message || 'Barang berhasil disimpan')
       router.push('/admin/items')
     }
   }
