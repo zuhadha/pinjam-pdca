@@ -159,7 +159,7 @@ export function ImageUpload({
 
   return (
     <div className="space-y-4">
-      {/* Upload Area */}
+      {/* Upload Area - Only show if below max */}
       {images.length < maxImages && itemId && (
         <div
           onDragOver={handleDragOver}
@@ -180,7 +180,7 @@ export function ImageUpload({
             {uploading ? 'Mengupload...' : 'Klik atau drag & drop gambar di sini'}
           </p>
           <p className="text-sm text-gray-500">
-            JPG, PNG, atau WebP (Max 5MB)
+            JPG, PNG, atau WebP (Max 1MB)
           </p>
           <p className="text-xs text-gray-400 mt-2">
             {images.length} / {maxImages} gambar
@@ -198,6 +198,18 @@ export function ImageUpload({
         </div>
       )}
 
+      {/* Max Images Reached Message */}
+      {images.length >= maxImages && itemId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-blue-800 font-medium">
+            Maximum {maxImages} gambar tercapai
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Hapus gambar yang ada untuk mengupload yang baru
+          </p>
+        </div>
+      )}
+
       {/* Warning if no itemId */}
       {!itemId && images.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
@@ -208,9 +220,9 @@ export function ImageUpload({
       {/* Image Previews */}
       {images.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-3">
+          {/* <p className="text-sm font-medium text-gray-700 mb-3">
             Gambar Barang ({images.length})
-          </p>
+          </p> */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {images.map((image, index) => (
               <div

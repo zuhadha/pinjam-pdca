@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { deleteItem } from '@/lib/actions/item-management-actions'
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -151,21 +151,24 @@ export function ItemsTable({ items }: ItemsTableProps) {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     <Link href={`/admin/items/edit/${item.id}`}>
-                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" className="flex items-center gap-1">
                         <Edit className="h-4 w-4" />
-                        Edit
                       </Button>
                     </Link>
                     <Button
                       onClick={() => handleDeleteClick(item.id, item.name)}
                       disabled={deleteLoading === item.id}
                       size="sm"
-                      className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
+                      variant='ghost'
+                      className="text-red-500"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      {deleteLoading === item.id ? 'Hapus...' : 'Hapus'}
+                      {deleteLoading === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </td>

@@ -179,7 +179,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-600"
               />
               <Label htmlFor="is_sensitive" className="cursor-pointer">
-                🔒 Barang Sensitif (Perlu persetujuan admin)
+                Barang Sensitif (Perlu persetujuan admin)
               </Label>
             </div>
 
@@ -193,7 +193,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
                   className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-600"
                 />
                 <Label htmlFor="is_active" className="cursor-pointer">
-                  ✓ Aktif (Tampilkan di katalog)
+                  Aktif (Tampilkan di katalog)
                 </Label>
               </div>
             )}
