@@ -40,7 +40,7 @@ export function ImageCarousel({ images, className = '' }: ImageCarouselProps) {
   return (
     <div className={`relative ${className}`}>
       {/* Main Image */}
-      <div className="relative aspect-square bg-gray-100 overflow-hidden rounded-lg">
+      <div className="relative h-48 bg-gray-100 overflow-hidden rounded-lg">
         <img
           src={sortedImages[currentIndex].image_url}
           alt={`Product image ${currentIndex + 1}`}
