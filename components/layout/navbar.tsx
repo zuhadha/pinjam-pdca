@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { getCurrentUser, logoutAction } from '@/lib/auth/actions'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { CartButton } from '@/components/cart/cart-button'
 
 interface UserData {
   id: string

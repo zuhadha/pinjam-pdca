@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { CartProvider } from "@/components/cart/cart-context";
 
 export const metadata: Metadata = {
   title: "Sistem Peminjaman Barang - Garuda Food",
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="antialiased">
-        <Navbar />
-        {children}
-        <Toaster />
+        <CartProvider>
+          <Navbar />
+          {children}
+          <Toaster />
+        </CartProvider>
       </body>
     </html>
   );

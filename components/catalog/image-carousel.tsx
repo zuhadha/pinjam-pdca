@@ -110,7 +110,7 @@ export function ImageCarousel({
                   className={`
                     transition-all rounded-full
                     ${index === currentIndex 
-                      ? 'bg-white w-2 h-2' 
+                      ? 'bg-white w-1.5 h-1.5' 
                       : 'bg-white/50 hover:bg-white/75 w-1.5 h-1.5'
                     }
                   `}
