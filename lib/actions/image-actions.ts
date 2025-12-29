@@ -100,8 +100,8 @@ export async function uploadItemImage(input: UploadImageInput) {
       return { error: 'Gagal menyimpan metadata gambar' }
     }
 
-    // Only revalidate catalog, not admin pages to avoid redirect during edit
-    revalidatePath('/catalog')
+    // No revalidation to prevent page refresh during edit
+    // Catalog will be revalidated when item form is submitted
 
     return {
       success: true,
@@ -170,7 +170,7 @@ export async function deleteItemImage(imageId: string) {
       }
     }
 
-    revalidatePath('/catalog')
+    // No revalidation during edit
 
     return {
       success: true,
@@ -200,7 +200,7 @@ export async function reorderItemImages(itemId: string, imageIds: string[]) {
         .eq('item_id', itemId) // Security: ensure image belongs to this item
     }
 
-    revalidatePath('/catalog')
+    // No revalidation during edit
 
     return {
       success: true,
