@@ -6,6 +6,7 @@ import type { Item } from '@/lib/actions/item-actions'
 import { Badge } from '@/components/ui/badge'
 import { BorrowModal } from '@/components/borrow/borrow-modal'
 import { MagicBento } from '@/components/ui/magic-bento'
+import { ImageCarousel } from './image-carousel'
 
 interface ItemCardProps {
   item: Item
@@ -22,16 +23,11 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
       <MagicBento className="rounded-lg p-[4px]">
         <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow h-full">
         {/* Item Image */}
-        <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
-          {item.photo_url ? (
-            <img
-              src={item.photo_url}
-              alt={item.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-6xl">{item.category?.icon || '📦'}</span>
-          )}
+        <div className="relative">
+          <ImageCarousel
+            images={item.images || []}
+            className="h-48"
+          />
           {!isAvailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">

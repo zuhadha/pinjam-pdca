@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createItem, updateItem } from '@/lib/actions/item-management-actions'
+import { ImageUpload } from '@/components/admin/image-upload'
+import { getItemImages } from '@/lib/actions/image-actions'
 import {
   Select,
   SelectContent,
@@ -26,6 +28,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [images, setImages] = useState<any[]>(initialData?.images || [])
   
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
@@ -33,7 +36,6 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
     category_id: initialData?.category_id || '',
     stock_total: initialData?.stock_total || 0,
     location: initialData?.location || '',
-    photo_url: initialData?.photo_url || '',
     is_sensitive: initialData?.is_sensitive || false,
     is_active: initialData?.is_active !== undefined ? initialData.is_active : true,
   })
@@ -153,19 +155,17 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
             />
           </div>
 
-          {/* Photo URL */}
+          {/* Images */}
           <div>
-            <Label htmlFor="photo_url">URL Foto</Label>
-            <Input
-              id="photo_url"
-              type="url"
-              value={formData.photo_url}
-              onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
-              placeholder="https://example.com/image.jpg"
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Foto Barang
+            </label>
+            <ImageUpload
+              itemId={initialData?.id}
+              images={images}
+              onImagesChange={setImages}
+              maxImages={5}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Masukkan URL foto barang (opsional)
-            </p>
           </div>
 
           {/* Checkboxes */}
