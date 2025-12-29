@@ -4,6 +4,9 @@ import { useState, useRef } from 'react'
 import { uploadItemImage, deleteItemImage, reorderItemImages } from '@/lib/actions/image-actions'
 import { toast } from 'sonner'
 import { X, Upload, GripVertical } from 'lucide-react'
+import { ImageCropModal } from './image-crop-modal'
+
+const MAX_FILE_SIZE = 1 * 1024 * 1024 // 1MB (changed from 5MB)
 
 interface ImageUploadProps {
   itemId?: string
@@ -19,8 +22,10 @@ export function ImageUpload({
   maxImages = 5 
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
+  const [ dragOver, setDragOver] = useState(false)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [fileToProcess, setFileToProcess] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (files: FileList | null) => {
@@ -32,26 +37,55 @@ export function ImageUpload({
       return
     }
 
+    // Only process first file (one at a time for cropping)
+    const file = files[0]
+    
+    // Validate file size BEFORE crop (1MB max)
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`Ukuran file terlalu besar. Maximum 1MB (file Anda: ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipe file tidak didukung. Gunakan JPG, PNG, atau WebP')
+      return
+    }
+
+    // Show crop modal
+    setFileToProcess(file)
+    setCropModalOpen(true)
+  }
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropModalOpen(false)
     setUploading(true)
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      
-      const result = await uploadItemImage({ itemId, file })
-      
-      if (result.error) {
-        toast.error(result.error)
-        setUploading(false)
-        return
-      }
+    if (!itemId || !fileToProcess) return
 
-      if (result.image) {
-        onImagesChange([...images, result.image])
-        toast.success('Gambar berhasil diupload')
-      }
+    // Convert blob to File
+    const croppedFile = new File(
+      [croppedBlob], 
+      fileToProcess.name.replace(/\.\w+$/, '.jpg'), // Force .jpg extension
+      { type: 'image/jpeg' }
+    )
+    
+    const result = await uploadItemImage({ itemId, file: croppedFile })
+    
+    if (result.error) {
+      toast.error(result.error)
+      setUploading(false)
+      return
+    }
+
+    if (result.image) {
+      onImagesChange([...images, result.image])
+      toast.success('Gambar berhasil diupload')
     }
 
     setUploading(false)
+    setFileToProcess(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -232,6 +266,20 @@ export function ImageUpload({
           </p>
         </div>
       )}
-    </div>
+
+    {/* Crop Modal */}
+    <ImageCropModal
+      isOpen={cropModalOpen}
+      imageFile={fileToProcess}
+      onCropComplete={handleCropComplete}
+      onCancel={() => {
+        setCropModalOpen(false)
+        setFileToProcess(null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }}
+    />
+  </div>
   )
 }
