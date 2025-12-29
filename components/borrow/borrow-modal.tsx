@@ -18,8 +18,20 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [items, setItems] = useState<BorrowRequestItem[]>(
     initialItems.map(item => ({ itemId: item.id, quantity: 1 }))
   )
+  // Borrowing type state (default: same-day)
+  const [borrowingType, setBorrowingType] = useState<'same-day' | 'multi-day'>('same-day')
+  
+  // Same-day fields
+  const [date, setDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  
+  // Multi-day fields
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  
+  // Common fields
+  const [usageLocation, setUsageLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,17 +42,35 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
     setError('')
     setLoading(true)
 
-    // Validation
-    if (!startDate || !endDate) {
-      setError('Tanggal mulai dan tanggal selesai harus diisi')
+    // Validate usage location
+    if (!usageLocation.trim()) {
+      setError('Lokasi penggunaan harus diisi')
       setLoading(false)
       return
     }
 
-    if (new Date(startDate) > new Date(endDate)) {
-      setError('Tanggal selesai harus setelah tanggal mulai')
-      setLoading(false)
-      return
+    // Validate based on borrowing type
+    let startDatetime: string
+    let endDatetime: string
+
+    if (borrowingType === 'same-day') {
+      if (!date || !startTime || !endTime) {
+        setError('Tanggal dan waktu harus diisi lengkap')
+        setLoading(false)
+        return
+      }
+      // Combine date + time into ISO datetime string
+      startDatetime = `${date}T${startTime}:00`
+      endDatetime = `${date}T${endTime}:00`
+    } else {
+      if (!startDate || !endDate) {
+        setError('Tanggal mulai dan tanggal selesai harus diisi')
+        setLoading(false)
+        return
+      }
+      // Set time to start of day and end of day
+      startDatetime = `${startDate}T00:00:00`
+      endDatetime = `${endDate}T23:59:59`
     }
 
     if (!purpose.trim()) {
@@ -57,8 +87,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     const result = await createBorrowRequest({
       items,
-      startDate,
-      endDate,
+      startDatetime,
+      endDatetime,
+      usageLocation,
       purpose,
       notes,
     })
@@ -138,30 +169,110 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             </div>
 
-            {/* Date Range */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate">Tanggal Mulai *</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
+            {/* Borrowing Type Switch */}
+            <div>
+              <Label>Tipe Peminjaman *</Label>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setBorrowingType('same-day')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                    borrowingType === 'same-day'
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                  }`}
+                >
+                  ⏰ Dalam Satu Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBorrowingType('multi-day')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                    borrowingType === 'multi-day'
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                  }`}
+                >
+                  📅 Lebih dari Satu Hari
+                </button>
               </div>
-              <div>
-                <Label htmlFor="endDate">Tanggal Selesai *</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || new Date().toISOString().split('T')[0]}
-                  required
-                />
+            </div>
+
+            {/* Conditional Date/Time Inputs */}
+            {borrowingType === 'same-day' ? (
+              <>
+                <div>
+                  <Label htmlFor="date">Tanggal *</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startTime">Waktu Mulai *</Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endTime">Waktu Selesai *</Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate">Tanggal Mulai *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endDate">Tanggal Selesai *</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
               </div>
+            )}
+
+            {/* Usage Location */}
+            <div>
+              <Label htmlFor="usageLocation">Lokasi Penggunaan *</Label>
+              <Input
+                id="usageLocation"
+                type="text"
+                placeholder="Contoh: Ruang Rapat A, Gedung C - Lantai 3"
+                value={usageLocation}
+                onChange={(e) => setUsageLocation(e.target.value)}
+                required
+              />
             </div>
 
             {/* Purpose */}

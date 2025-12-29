@@ -8,7 +8,7 @@ export default function HomePage() {
         {/* Background Image */}
         <div className="absolute inset-0 -z-20">
           <img 
-            src="/hero-img.jpg" 
+            src="/hero-img.webp" 
             alt="Hero background" 
             className="w-full h-full object-cover"
           />

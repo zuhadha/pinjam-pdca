@@ -11,8 +11,9 @@ export interface BorrowRequestItem {
 
 export interface CreateBorrowRequestInput {
   items: BorrowRequestItem[]
-  startDate: string
-  endDate: string
+  startDatetime: string // ISO 8601 datetime string
+  endDatetime: string // ISO 8601 datetime string
+  usageLocation: string
   purpose: string
   notes?: string
 }
@@ -26,6 +27,41 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
   }
 
   try {
+    // Validate usage location
+    if (!input.usageLocation || !input.usageLocation.trim()) {
+      return { error: 'Lokasi penggunaan harus diisi' }
+    }
+
+    // Parse and validate datetime
+    const startDatetime = new Date(input.startDatetime)
+    const endDatetime = new Date(input.endDatetime)
+
+    if (isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime())) {
+      return { error: 'Format tanggal/waktu tidak valid' }
+    }
+
+    if (endDatetime <= startDatetime) {
+      return { error: 'Waktu selesai harus setelah waktu mulai' }
+    }
+
+    // Auto-detect if same-day borrowing
+    const isSameDay = startDatetime.toDateString() === endDatetime.toDateString()
+
+    // Validate based on borrowing type
+    if (isSameDay) {
+      // Same-day validation: already checked end > start above
+      const timeDiff = (endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60) // minutes
+      if (timeDiff < 30) {
+        return { error: 'Durasi peminjaman minimal 30 menit' }
+      }
+    } else {
+      // Multi-day validation: end must be at least 1 day after start
+      const daysDiff = Math.floor((endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysDiff < 1) {
+        return { error: 'Untuk peminjaman multi-hari, durasi minimal 1 hari penuh' }
+      }
+    }
+
     // Check if any item is sensitive
     const itemIds = input.items.map(i => i.itemId)
     const { data: items, error: itemsError } = await supabase
@@ -51,13 +87,15 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     // All items are immediately borrowed (no approval needed)
     const status = 'borrowed'
 
-    // Create borrow request
+    // Create borrow request with new datetime fields
     const { data: borrowRequest, error: requestError } = await supabase
       .from('borrow_requests')
       .insert({
         user_id: user.id,
-        start_date: input.startDate,
-        end_date: input.endDate,
+        start_datetime: input.startDatetime,
+        end_datetime: input.endDatetime,
+        usage_location: input.usageLocation.trim(),
+        is_same_day: isSameDay,
         purpose: input.purpose,
         notes: input.notes,
         status: status,

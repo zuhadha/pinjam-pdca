@@ -111,22 +111,25 @@ export default async function DashboardPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <Badge variant={
-                          request.return_declared_at ? 'blue' :
-                          request.status === 'approved' || request.status === 'borrowed' ? 'success' :
-                          request.status === 'pending' ? 'warning' :
-                          request.status === 'rejected' ? 'destructive' :
-                          request.status === 'returned' ? 'gray' :
-                          'gray'
-                        }>
-                          {request.return_declared_at ? '🔄 Menunggu Verifikasi' :
-                           request.status === 'approved' ? '✓ Disetujui' :
-                           request.status === 'borrowed' ? '📦 Sedang Dipinjam' :
-                           request.status === 'pending' ? '⏳ Menunggu Persetujuan' :
-                           request.status === 'rejected' ? '✗ Ditolak' :
-                           request.status === 'returned' ? '✓ Dikembalikan' :
-                           request.status}
-                        </Badge>
+                         <Badge variant={
+                           request.return_declared_at ? 'blue' :
+                           request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                           request.status === 'pending' ? 'warning' :
+                           request.status === 'rejected' ? 'destructive' :
+                           request.status === 'returned' ? 'gray' :
+                           'gray'
+                         }>
+                           {request.return_declared_at ? '🔄 Menunggu Verifikasi' :
+                            request.status === 'approved' ? '✓ Disetujui' :
+                            request.status === 'borrowed' ? '📦 Sedang Dipinjam' :
+                            request.status === 'pending' ? '⏳ Menunggu Persetujuan' :
+                            request.status === 'rejected' ? '✗ Ditolak' :
+                            request.status === 'returned' ? '✓ Dikembalikan' :
+                            request.status}
+                         </Badge>
+                         {request.is_same_day && (
+                           <Badge variant="outline">⏰ Sehari</Badge>
+                         )}
                       </div>
                       <p className="text-sm text-gray-500">
                         {format(new Date(request.created_at), 'dd MMM yyyy', { locale: idLocale })}
@@ -152,13 +155,25 @@ export default async function DashboardPage() {
                       <div>
                         <span className="text-gray-600">Tanggal:</span>
                         <p className="font-medium text-gray-900">
-                          {format(new Date(request.start_date), 'dd MMM yyyy', { locale: idLocale })} - {format(new Date(request.end_date), 'dd MMM yyyy', { locale: idLocale })}
+                          {request.is_same_day ? (
+                            // Same-day: show date with time range
+                            `${format(new Date(request.start_datetime), 'dd MMM yyyy', { locale: idLocale })}, ${format(new Date(request.start_datetime), 'HH:mm')} - ${format(new Date(request.end_datetime), 'HH:mm')}`
+                          ) : (
+                            // Multi-day: show date range
+                            `${format(new Date(request.start_datetime), 'dd MMM', { locale: idLocale })} - ${format(new Date(request.end_datetime), 'dd MMM yyyy', { locale: idLocale })}`
+                          )}
                         </p>
                       </div>
                       <div>
                         <span className="text-gray-600">Keperluan:</span>
                         <p className="font-medium text-gray-900">{request.purpose}</p>
                       </div>
+                    </div>
+
+                    {/* Usage Location */}
+                    <div className="mb-3 text-sm">
+                      <span className="text-gray-600">Lokasi Penggunaan:</span>
+                      <p className="font-medium text-gray-900">{request.usage_location}</p>
                     </div>
 
                     {/* Actions */}

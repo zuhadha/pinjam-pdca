@@ -58,28 +58,37 @@ export function RequestsTable({ requests }: RequestsTableProps) {
               onClick={() => setExpandedId(isExpanded ? null : request.id)}
             >
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <Badge variant={
-                    needsVerification ? 'blue' :
-                    request.status === 'pending' ? 'warning' :
-                    request.status === 'approved' || request.status === 'borrowed' ? 'success' :
-                    request.status === 'rejected' ? 'destructive' :
-                    'gray'
-                  }>
-                    {needsVerification ? '🔄 Verifikasi Return' :
-                     request.status === 'pending' ? '⏳ Pending' :
-                     request.status === 'approved' ? '✓ Approved' :
-                     request.status === 'borrowed' ? '📦 Dipinjam' :
-                     request.status === 'rejected' ? '✗ Ditolak' :
-                     request.status === 'returned' ? '✓ Dikembalikan' :
-                     request.status}
-                  </Badge>
-                </div>
-                <p className="font-semibold text-gray-900">{request.user?.name} ({request.user?.nik})</p>
-                <p className="text-sm text-gray-600">{request.purpose}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {format(new Date(request.start_date), 'dd MMM yyyy')} - {format(new Date(request.end_date), 'dd MMM yyyy')}
-                </p>
+                 <div className="flex items-center gap-3 mb-2">
+                   <Badge variant={
+                     needsVerification ? 'blue' :
+                     request.status === 'pending' ? 'warning' :
+                     request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                     request.status === 'rejected' ? 'destructive' :
+                     'gray'
+                   }>
+                     {needsVerification ? '🔄 Verifikasi Return' :
+                      request.status === 'pending' ? '⏳ Pending' :
+                      request.status === 'approved' ? '✓ Approved' :
+                      request.status === 'borrowed' ? '📦 Dipinjam' :
+                      request.status === 'rejected' ? '✗ Ditolak' :
+                      request.status === 'returned' ? '✓ Dikembalikan' :
+                      request.status}
+                   </Badge>
+                   {request.is_same_day && (
+                     <Badge variant="outline">⏰ Sehari</Badge>
+                   )}
+                 </div>
+                 <p className="font-semibold text-gray-900">{request.user?.name} ({request.user?.nik})</p>
+                 <p className="text-sm text-gray-600">{request.purpose}</p>
+                 <p className="text-xs text-gray-500 mt-1">
+                   {request.is_same_day ? (
+                     // Same-day: show date with time range
+                     `${format(new Date(request.start_datetime), 'dd MMM yyyy, HH:mm')} - ${format(new Date(request.end_datetime), 'HH:mm')}`
+                   ) : (
+                     // Multi-day: show date range
+                     `${format(new Date(request.start_datetime), 'dd MMM yyyy')} - ${format(new Date(request.end_datetime), 'dd MMM yyyy')}`
+                   )}
+                 </p>
               </div>
               <span className="text-gray-400">
                 {isExpanded ? '▼' : '▶'}
@@ -103,13 +112,18 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                   </div>
                 </div>
 
-                {/* Notes */}
-                {request.notes && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Catatan User:</h4>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{request.notes}</p>
-                  </div>
-                )}
+                 {request.notes && (
+                   <div>
+                     <h4 className="font-semibold text-gray-900 mb-1">Catatan User:</h4>
+                     <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{request.notes}</p>
+                   </div>
+                 )}
+
+                 {/* Usage Location */}
+                 <div>
+                   <h4 className="font-semibold text-gray-900 mb-1">Lokasi Penggunaan:</h4>
+                   <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{request.usage_location}</p>
+                 </div>
 
                 {request.admin_notes && (
                   <div>
