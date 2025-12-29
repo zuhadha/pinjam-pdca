@@ -23,7 +23,10 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
   const user = await getCurrentUser()
 
   if (!user) {
-    return { error: 'User not authenticated' }
+    return {
+      error: 'Anda harus login terlebih dahulu untuk meminjam barang',
+      requiresAuth: true
+    }
   }
 
   try {
@@ -192,7 +195,10 @@ export async function declareBorrowReturn(requestId: string) {
   const user = await getCurrentUser()
 
   if (!user) {
-    return { error: 'User not authenticated' }
+    return {
+      error: 'Anda harus login terlebih dahulu',
+      requiresAuth: true
+    }
   }
 
   try {

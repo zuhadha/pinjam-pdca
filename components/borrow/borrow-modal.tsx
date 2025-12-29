@@ -36,6 +36,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [requiresAuth, setRequiresAuth] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,6 +97,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     if (result.error) {
       setError(result.error)
+      setRequiresAuth((result as any).requiresAuth || false)
       setLoading(false)
     } else {
       toast.success(result.message)
@@ -302,8 +304,16 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                <p className="text-sm mb-2">{error}</p>
+                {requiresAuth && (
+                  <a
+                    href="/login"
+                    className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
+                  >
+                    🔐 Login Sekarang
+                  </a>
+                )}
               </div>
             )}
 
