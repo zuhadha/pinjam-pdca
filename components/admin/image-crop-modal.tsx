@@ -103,12 +103,14 @@ export function ImageCropModal({ isOpen, imageFile, onCropComplete, onCancel }: 
           {/* Action Buttons */}
           <div className="flex gap-3 justify-end">
             <button
+              type="button"
               onClick={onCancel}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Batal
             </button>
             <button
+              type="button"
               onClick={handleSave}
               className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
             >
