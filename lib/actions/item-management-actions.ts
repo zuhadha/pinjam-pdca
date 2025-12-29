@@ -18,8 +18,17 @@ export async function getAllItems(filters?: {
 
   let query = supabase
     .from('items')
-    .select('*, category:categories(id, name, icon)')
+    .select(`
+      *,
+      category:categories(id, name, icon),
+      images:item_images(
+        id,
+        image_url,
+        display_order
+      )
+    `)
     .order('created_at', { ascending: false })
+    .order('display_order', { foreignTable: 'item_images', ascending: true })
 
   // Apply filters
   if (filters?.categoryId) {
@@ -52,7 +61,6 @@ export async function createItem(formData: {
   category_id: string
   stock_total: number
   location?: string
-  photo_url?: string
   is_sensitive: boolean
 }) {
   const supabase = await createClient()
@@ -91,7 +99,6 @@ export async function updateItem(itemId: string, formData: {
   category_id: string
   stock_total: number
   location?: string
-  photo_url?: string
   is_sensitive: boolean
   is_active: boolean
 }) {
