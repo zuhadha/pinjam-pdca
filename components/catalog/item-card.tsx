@@ -26,6 +26,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
         <div className="relative">
           <ImageCarousel
             images={item.images || []}
+            imageClassName="h-48"
           />
           {!isAvailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">

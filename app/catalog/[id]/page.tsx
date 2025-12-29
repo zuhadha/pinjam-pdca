@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BorrowButton } from '@/components/borrow/borrow-button'
+import { ImageCarousel } from '@/components/catalog/image-carousel'
 
 interface ItemDetailPageProps {
   params: Promise<{
@@ -47,17 +48,10 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           <div className="grid md:grid-cols-2 gap-8 p-6 md:p-8">
             {/* Image */}
             <div>
-              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                {item.photo_url ? (
-                  <img
-                    src={item.photo_url}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-9xl">{item.category?.icon || '📦'}</span>
-                )}
-              </div>
+              <ImageCarousel
+                images={item.images || []}
+                useBlurBackground={true}
+              />
             </div>
 
             {/* Details */}

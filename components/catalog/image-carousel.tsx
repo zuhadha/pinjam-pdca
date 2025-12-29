@@ -10,14 +10,21 @@ interface ImageCarouselProps {
     display_order: number
   }>
   className?: string
+  imageClassName?: string // For controlling inner image container height
+  useBlurBackground?: boolean // Use blurred background instead of cropping image
 }
 
-export function ImageCarousel({ images, className = '' }: ImageCarouselProps) {
+export function ImageCarousel({ 
+  images, 
+  className = '', 
+  imageClassName = 'aspect-square',
+  useBlurBackground = false 
+}: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
 
   if (!images || images.length === 0) {
     return (
-      <div className={`bg-gray-100 flex items-center justify-center ${className}`}>
+      <div className={`bg-gray-100 flex items-center justify-center ${imageClassName} ${className}`}>
         <span className="text-6xl">📦</span>
       </div>
     )
@@ -40,11 +47,22 @@ export function ImageCarousel({ images, className = '' }: ImageCarouselProps) {
   return (
     <div className={`relative ${className}`}>
       {/* Main Image */}
-      <div className="relative h-48 bg-gray-100 overflow-hidden rounded-lg">
+      <div className={`relative ${imageClassName} bg-gray-100 overflow-hidden rounded-lg`}>
+        {/* Blurred background (only if useBlurBackground is true) */}
+        {useBlurBackground && (
+          <img
+            src={sortedImages[currentIndex].image_url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-60"
+            aria-hidden="true"
+          />
+        )}
+        
+        {/* Main image */}
         <img
           src={sortedImages[currentIndex].image_url}
           alt={`Product image ${currentIndex + 1}`}
-          className="w-full h-full object-cover"
+          className={`relative w-full h-full ${useBlurBackground ? 'object-contain' : 'object-cover'}`}
         />
 
         {/* Navigation Arrows (only show if multiple images) */}
