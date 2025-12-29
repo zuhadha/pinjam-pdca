@@ -10,7 +10,6 @@ export interface Item {
   stock_total: number
   stock_available: number
   location: string | null
-  photo_url: string | null
   is_sensitive: boolean
   is_active: boolean
   created_at: string
@@ -20,6 +19,11 @@ export interface Item {
     name: string
     icon: string | null
   } | null
+  images?: {
+    id: string
+    image_url: string
+    display_order: number
+  }[]
 }
 
 export interface Category {
@@ -41,10 +45,12 @@ export async function getItems(filters?: {
     .from('items')
     .select(`
       *,
-      category:categories(id, name, icon)
+      category:categories(id, name, icon),
+      images:item_images(id, image_url, display_order)
     `)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+    .order('display_order', { foreignTable: 'item_images', ascending: true })
 
   if (filters?.search) {
     query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
@@ -91,10 +97,12 @@ export async function getItemById(id: string) {
     .from('items')
     .select(`
       *,
-      category:categories(id, name, icon)
+      category:categories(id, name, icon),
+      images:item_images(id, image_url, display_order)
     `)
     .eq('id', id)
     .eq('is_active', true)
+    .order('display_order', { foreignTable: 'item_images', ascending: true })
     .single()
 
   if (error) {
@@ -112,11 +120,13 @@ export async function getFeaturedItems(limit: number = 6) {
     .from('items')
     .select(`
       *,
-      category:categories(id, name, icon)
+      category:categories(id, name, icon),
+      images:item_images(id, image_url, display_order)
     `)
     .eq('is_active', true)
     .gt('stock_available', 0)
     .order('created_at', { ascending: false })
+    .order('display_order', { foreignTable: 'item_images', ascending: true })
     .limit(limit)
 
   if (error) {
