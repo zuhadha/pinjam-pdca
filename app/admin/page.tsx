@@ -132,7 +132,13 @@ export default async function AdminDashboardPage() {
                     <p className="font-medium text-gray-900">{request.user?.name}</p>
                     <p className="text-sm text-gray-600">{request.purpose}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {format(new Date(request.start_date), 'dd MMM yyyy')} - {format(new Date(request.end_date), 'dd MMM yyyy')}
+                      {request.is_same_day ? (
+                        // Same-day: show date with time range
+                        `${format(new Date(request.start_datetime), 'dd MMM yyyy, HH:mm')} - ${format(new Date(request.end_datetime), 'HH:mm')}`
+                      ) : (
+                        // Multi-day: show date range
+                        `${format(new Date(request.start_datetime), 'dd MMM yyyy')} - ${format(new Date(request.end_datetime), 'dd MMM yyyy')}`
+                      )}
                     </p>
                   </div>
                   <Link href={`/admin/requests`}>
