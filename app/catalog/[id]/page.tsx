@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BorrowButton } from '@/components/borrow/borrow-button'
 import { ImageCarousel } from '@/components/catalog/image-carousel'
+import { AddToCartButton } from '@/components/cart/add-to-cart-button'
+import { MapPin } from 'lucide-react'
 
 interface ItemDetailPageProps {
   params: Promise<{
@@ -77,35 +79,35 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
                   {isAvailable ? '✓ Tersedia' : '✗ Tidak Tersedia'}
                 </span>
               </div>
-
-              {/* Title */}
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{item.name}</h1>
-
-              {/* Description */}
-              {item.description && (
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  {item.description}
-                </p>
-              )}
-
-              {/* Details */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3 text-gray-700">
-                  <span className="font-semibold min-w-[120px]">Stok Total:</span>
-                  <span>{item.stock_total}</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-700">
-                  <span className="font-semibold min-w-[120px]">Stok Tersedia:</span>
-                  <span className={isAvailable ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-                    {item.stock_available}
-                  </span>
-                </div>
-                {item.location && (
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <span className="font-semibold min-w-[120px]">Lokasi:</span>
-                    <span>📍 {item.location}</span>
-                  </div>
+                  
+              <div className="flex flex-col border-b border-slate-300 min-h-42">
+                {/* <p>test</p> */}
+                {/* Title */}
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-4">{item.name}</h1>
+                {/* Description */}
+                {item.description && (
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    {item.description}
+                  </p>
                 )}
+              </div>
+              <div className='my-3 flex flex-row'>
+                <div className='w-full'>
+                  <p className='font-semibold text-sm text-slate-400 pb-1'>STOK TOTAL</p>
+                  <p className='font-bold'>{item.stock_total} Unit</p>
+                </div>
+                <div className='w-full'>
+                  <p className='font-semibold text-sm text-slate-400 pb-1'>STOK TERSEDIA</p>
+                  <p className='font-bold text-green-700'>{item.stock_available} Unit</p>
+                </div>
+              </div>
+
+              <div className='min-h-24 min-w-24 my-3'>
+                <p className='font-semibold text-sm text-slate-400 pb-2'>LOKASI PENYIMPANAN</p>
+                <div className='flex flex-row gap-x-2 py-3 px-4 bg-slate-100 border border-slate-200 rounded-xl font-semibold'>
+                  <MapPin />
+                  <p> {item.location}</p>
+                </div>
               </div>
 
               {/* Action Button */}
@@ -119,7 +121,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
                         Login untuk Meminjam
                       </button>
                     </Link>
-                    <p className="text-sm text-gray-600 text-center">
+                    <p className="text-sm text-red-400 text-center mt-2">
                       Anda harus login terlebih dahulu untuk meminjam barang
                     </p>
                   </div>
@@ -127,13 +129,13 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
               </div>
 
               {/* Info Box */}
-              {item.is_sensitive && (
+              {/* {item.is_sensitive && (
                 <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <p className="text-sm text-yellow-800">
                     <strong>⚠️ Barang Sensitif:</strong> Peminjaman barang ini memerlukan persetujuan admin.
                   </p>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

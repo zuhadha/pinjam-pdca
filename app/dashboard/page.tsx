@@ -110,8 +110,8 @@ export default async function DashboardPage() {
                   <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                         <Badge variant={
+                      <div className='flex gap-2'>
+                        <Badge variant={
                            request.return_declared_at ? 'blue' :
                            request.status === 'approved' || request.status === 'borrowed' ? 'success' :
                            request.status === 'pending' ? 'warning' :
@@ -119,16 +119,16 @@ export default async function DashboardPage() {
                            request.status === 'returned' ? 'gray' :
                            'gray'
                          }>
-                           {request.return_declared_at ? '🔄 Menunggu Verifikasi' :
-                            request.status === 'approved' ? '✓ Disetujui' :
-                            request.status === 'borrowed' ? '📦 Sedang Dipinjam' :
-                            request.status === 'pending' ? '⏳ Menunggu Persetujuan' :
-                            request.status === 'rejected' ? '✗ Ditolak' :
-                            request.status === 'returned' ? '✓ Dikembalikan' :
+                           {request.return_declared_at ? 'Menunggu Verifikasi' :
+                            request.status === 'approved' ? 'Disetujui' :
+                            request.status === 'borrowed' ? 'Sedang Dipinjam' :
+                            request.status === 'pending' ? 'Menunggu Persetujuan' :
+                            request.status === 'rejected' ? 'Ditolak' :
+                            request.status === 'returned' ? 'Dikembalikan' :
                             request.status}
                          </Badge>
                          {request.is_same_day && (
-                           <Badge variant="outline">⏰ Sehari</Badge>
+                           <Badge variant="outline">Sehari</Badge>
                          )}
                       </div>
                       <p className="text-sm text-gray-500">

@@ -59,7 +59,7 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Stok Menipis</CardTitle>
             <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -68,9 +68,9 @@ export default async function AdminDashboardPage() {
             <div className="text-3xl font-bold text-gray-900">{stats.lowStockCount}</div>
             <p className="text-xs text-gray-600 mt-1">Perlu restock</p>
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card className="bg-gradient-to-br from-primary-50 to-secondary-50 border-primary-200">
+        {/* <Card className="bg-gradient-to-br from-primary-50 to-secondary-50 border-primary-200">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-primary-900">Quick Actions</CardTitle>
           </CardHeader>
@@ -86,7 +86,7 @@ export default async function AdminDashboardPage() {
               </Button>
             </Link>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Recent Requests */}
@@ -98,7 +98,7 @@ export default async function AdminDashboardPage() {
               <CardDescription>5 permintaan peminjaman terakhir</CardDescription>
             </div>
             <Link href="/admin/requests">
-              <Button variant="outline" size="sm">
+              <Button variant="ghost" size="sm">
                 Lihat Semua
               </Button>
             </Link>

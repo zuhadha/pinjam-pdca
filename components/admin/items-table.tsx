@@ -69,7 +69,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Kategori
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Stok
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -121,10 +121,10 @@ export function ItemsTable({ items }: ItemsTableProps) {
                     <span>{item.category?.name || '-'}</span>
                   </Badge>
                 </td>
-                <td className="px-6 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {item.stock_available} / {item.stock_total}
+                <td className="px-3 py-4">
+                  <div className="flex justify-center">
+                    <p className="font-medium text-xs text-gray-900">
+                      {item.stock_available}/{item.stock_total}
                     </p>
                     {isLowStock && (
                       <p className="text-xs text-red-600 font-medium">⚠️ Stok Menipis</p>

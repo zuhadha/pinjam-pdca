@@ -25,7 +25,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Kelola Barang', href: '/admin/items', icon: Package },
   { name: 'Kelola Peminjaman', href: '/admin/requests', icon: FileText },
-  { name: 'Pengaturan', href: '/admin/settings', icon: Settings },
+  // { name: 'Pengaturan', href: '/admin/settings', icon: Settings },
 ]
 
 export function AdminSidebar({ user }: AdminSidebarProps) {

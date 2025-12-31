@@ -247,7 +247,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-400 mb-4">
-              © 2025 Garuda Food. Sistem Peminjaman Barang Internal.
+              © Made with ❤️ by PDCA BUE.
             </p>
             <p className="text-sm text-gray-500">
               Kelola peminjaman barang kantor dengan mudah dan terorganisir

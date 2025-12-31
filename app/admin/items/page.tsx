@@ -46,7 +46,7 @@ export default async function ItemsPage({ searchParams }: ItemsPageProps) {
         <CardHeader>
           <CardTitle>Daftar Barang</CardTitle>
           <CardDescription>
-            Menampilkan {items.length} barang test
+            Menampilkan {items.length} barang
           </CardDescription>
         </CardHeader>
         <CardContent>

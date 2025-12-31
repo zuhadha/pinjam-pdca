@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Category } from '@/lib/actions/item-actions'
+import { Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -24,21 +26,33 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '')
   const [availableOnly, setAvailableOnly] = useState(searchParams.get('available') === 'true')
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    applyFilters()
-  }
-
-  const applyFilters = () => {
+  const applyFilters = (newSearch: string, newCategoryId: string, newAvailableOnly: boolean) => {
     const params = new URLSearchParams()
     
-    if (search) params.set('search', search)
-    if (categoryId) params.set('category', categoryId)
-    if (availableOnly) params.set('available', 'true')
+    if (newSearch) params.set('search', newSearch)
+    if (newCategoryId) params.set('category', newCategoryId)
+    if (newAvailableOnly) params.set('available', 'true')
 
     startTransition(() => {
       router.push(`/catalog?${params.toString()}`)
     })
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    applyFilters(value, categoryId, availableOnly)
+  }
+
+  const handleCategoryChange = (value: string) => {
+    const newValue = value === 'all' ? '' : value
+    setCategoryId(newValue)
+    applyFilters(search, newValue, availableOnly)
+  }
+
+  const handleAvailableToggle = () => {
+    const newValue = !availableOnly
+    setAvailableOnly(newValue)
+    applyFilters(search, categoryId, newValue)
   }
 
   const resetFilters = () => {
@@ -50,102 +64,80 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
     })
   }
 
+  const hasActiveFilters = search || categoryId || availableOnly
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <form onSubmit={handleSearch} className="space-y-4">
-        {/* Search Input */}
-        <div>
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-            Cari Barang
-          </label>
-          <div className="relative">
-            <input
-              id="search"
-              type="text"
-              placeholder="Cari nama barang..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-            />
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      {/* Single Row with All Filters */}
+      <div className="flex items-center gap-2">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari barang..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+          />
+          {search && (
             <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              onClick={() => handleSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              🔍
+              <X className="h-5 w-5" />
             </button>
-          </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Category Filter */}
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-              Kategori
-            </label>
-            <Select value={categoryId || undefined} onValueChange={(value) => {
-              setCategoryId(value || '')
-              // Auto-apply when changed
-              const params = new URLSearchParams()
-              if (search) params.set('search', search)
-              if (value) params.set('category', value)
-              if (availableOnly) params.set('available', 'true')
-              startTransition(() => {
-                router.push(`/catalog?${params.toString()}`)
-              })
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Semua Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Available Only Toggle */}
-          <div className="flex items-end">
-            <label className="flex items-center gap-3 cursor-pointer bg-gray-50 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors w-full">
-              <input
-                type="checkbox"
-                checked={availableOnly}
-                onChange={(e) => {
-                  setAvailableOnly(e.target.checked)
-                  // Auto-apply when changed
-                  const params = new URLSearchParams()
-                  if (search) params.set('search', search)
-                  if (categoryId) params.set('category', categoryId)
-                  if (e.target.checked) params.set('available', 'true')
-                  startTransition(() => {
-                    router.push(`/catalog?${params.toString()}`)
-                  })
-                }}
-                className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-primary-600"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Hanya yang Tersedia
-              </span>
-            </label>
-          </div>
-
-          {/* Reset Button */}
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-            >
-              Reset Filter
-            </button>
-          </div>
+        {/* Category Dropdown */}
+        <div className="w-48">
+          <Select
+            value={categoryId || 'all'}
+            onValueChange={handleCategoryChange}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Kategori</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.icon && <span className="mr-1">{cat.icon}</span>}
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </form>
 
+        {/* Available Only Toggle */}
+        <Button
+          variant={availableOnly ? 'default' : 'outline'}
+          size="sm"
+          onClick={handleAvailableToggle}
+          className="whitespace-nowrap px-4"
+        >
+          {availableOnly ? '✓ ' : ''}Tersedia
+        </Button>
+
+        {/* Reset Button */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="whitespace-nowrap px-3"
+            title="Reset filter"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Loading Indicator */}
       {isPending && (
-        <div className="mt-4 text-center text-sm text-gray-600">
+        <div className="mt-3 text-center text-sm text-gray-600">
           Memuat...
         </div>
       )}

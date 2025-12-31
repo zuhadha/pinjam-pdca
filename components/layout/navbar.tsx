@@ -7,6 +7,7 @@ import { getCurrentUser, logoutAction } from '@/lib/auth/actions'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CartButton } from '@/components/cart/cart-button'
+import { LogOut } from 'lucide-react'
 
 interface UserData {
   id: string
@@ -47,6 +48,7 @@ export function Navbar() {
 
   if (user) {
     if (user.role === 'admin') {
+      navLinks.pop(),
       navLinks.push({ href: '/admin', label: 'Admin' })
     } else {
       navLinks.push({ href: '/dashboard', label: 'Dashboard' })
@@ -88,20 +90,26 @@ export function Navbar() {
 
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
+            {
+              user?.role !== 'admin' ? (
+              <CartButton />
+              ) : null
+            }
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
             ) : user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{user.name}</p>
                   <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                 </div>
+
                 <Button
                   onClick={handleLogout}
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                 >
-                  Logout
+                  <LogOut className="h-5 w-5" />
                 </Button>
               </div>
             ) : (
