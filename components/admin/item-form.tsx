@@ -36,8 +36,6 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
     category_id: initialData?.category_id || '',
     stock_total: initialData?.stock_total || 0,
     location: initialData?.location || '',
-    is_sensitive: initialData?.is_sensitive || false,
-    is_active: initialData?.is_active !== undefined ? initialData.is_active : true,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,37 +164,6 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
               onImagesChange={setImages}
               maxImages={5}
             />
-          </div>
-
-          {/* Checkboxes */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_sensitive"
-                checked={formData.is_sensitive}
-                onChange={(e) => setFormData({ ...formData, is_sensitive: e.target.checked })}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-600"
-              />
-              <Label htmlFor="is_sensitive" className="cursor-pointer">
-                Barang Sensitif (Perlu persetujuan admin)
-              </Label>
-            </div>
-
-            {mode === 'edit' && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-600"
-                />
-                <Label htmlFor="is_active" className="cursor-pointer">
-                  Aktif (Tampilkan di katalog)
-                </Label>
-              </div>
-            )}
           </div>
 
           {/* Error Message */}

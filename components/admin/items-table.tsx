@@ -133,17 +133,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
-                    {item.is_sensitive && (
-                      <Badge variant="secondary" className="min-w-[50px] justify-center">
-                        Sensitif
-                      </Badge>
-                    )}
-                    {!item.is_active && (
-                      <Badge variant="destructive" className="min-w-[50px] justify-center">
-                        Tidak Aktif
-                      </Badge>
-                    )}
-                    {item.stock_available === 0 && item.is_active && (
+                    {item.stock_available === 0 && (
                       <Badge variant="gray" className="min-w-[50px] justify-center">
                         Habis
                       </Badge>

@@ -18,7 +18,6 @@ export async function getAdminStats() {
     const { count: totalItems } = await supabase
       .from('items')
       .select('*', { count: 'exact', head: true })
-      .eq('is_active', true)
 
     // Total categories
     const { count: totalCategories } = await supabase
@@ -42,7 +41,6 @@ export async function getAdminStats() {
     const { data: itemsData } = await supabase
       .from('items')
       .select('stock_total, stock_available')
-      .eq('is_active', true)
 
     const lowStockCount = itemsData?.filter(item => {
       if (item.stock_total === 0) return false

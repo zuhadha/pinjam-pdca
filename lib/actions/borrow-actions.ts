@@ -88,7 +88,7 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     const itemIds = input.items.map(i => i.itemId)
     const { data: items, error: itemsError } = await supabase
       .from('items')
-      .select('id, is_sensitive, stock_available')
+      .select('id, stock_available')
       .in('id', itemIds)
 
     if (itemsError) {

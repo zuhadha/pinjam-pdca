@@ -61,7 +61,6 @@ export async function createItem(formData: {
   category_id: string
   stock_total: number
   location?: string
-  is_sensitive: boolean
 }) {
   const supabase = await createClient()
   const user = await getCurrentUser()
@@ -74,7 +73,6 @@ export async function createItem(formData: {
     const { error } = await supabase.from('items').insert({
       ...formData,
       stock_available: formData.stock_total, // Initially, all stock is available
-      is_active: true,
     })
 
     if (error) {
@@ -99,8 +97,6 @@ export async function updateItem(itemId: string, formData: {
   category_id: string
   stock_total: number
   location?: string
-  is_sensitive: boolean
-  is_active: boolean
 }) {
   const supabase = await createClient()
   const user = await getCurrentUser()
@@ -184,10 +180,10 @@ export async function deleteItem(itemId: string) {
       }
     }
 
-    // Soft delete
+    // Hard delete instead of soft delete
     const { error } = await supabase
       .from('items')
-      .update({ is_active: false })
+      .delete()
       .eq('id', itemId)
 
     if (error) {
@@ -284,7 +280,6 @@ export async function deleteCategory(categoryId: string) {
       .from('items')
       .select('*', { count: 'exact', head: true })
       .eq('category_id', categoryId)
-      .eq('is_active', true)
 
     if (count && count > 0) {
       return { error: 'Tidak bisa menghapus kategori yang masih memiliki barang aktif' }

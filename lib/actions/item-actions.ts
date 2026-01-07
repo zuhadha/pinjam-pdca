@@ -10,8 +10,6 @@ export interface Item {
   stock_total: number
   stock_available: number
   location: string | null
-  is_sensitive: boolean
-  is_active: boolean
   created_at: string
   updated_at: string
   category?: {
@@ -48,7 +46,6 @@ export async function getItems(filters?: {
       category:categories(id, name, icon),
       images:item_images(id, image_url, display_order)
     `)
-    .eq('is_active', true)
     .order('created_at', { ascending: false })
     .order('display_order', { foreignTable: 'item_images', ascending: true })
 
@@ -101,7 +98,6 @@ export async function getItemById(id: string) {
       images:item_images(id, image_url, display_order)
     `)
     .eq('id', id)
-    .eq('is_active', true)
     .order('display_order', { foreignTable: 'item_images', ascending: true })
     .single()
 
@@ -123,7 +119,6 @@ export async function getFeaturedItems(limit: number = 6) {
       category:categories(id, name, icon),
       images:item_images(id, image_url, display_order)
     `)
-    .eq('is_active', true)
     .gt('stock_available', 0)
     .order('created_at', { ascending: false })
     .order('display_order', { foreignTable: 'item_images', ascending: true })
