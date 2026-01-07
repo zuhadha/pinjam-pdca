@@ -19,7 +19,6 @@ interface AddToCartButtonProps {
       image_url: string
       display_order: number
     }>
-    is_sensitive: boolean
   }
 }
 
@@ -34,7 +33,6 @@ export function AddToCartButton({ item }: AddToCartButtonProps) {
       stock_available: item.stock_available,
       category: item.category || undefined,
       images: item.images || [],
-      is_sensitive: item.is_sensitive,
     })
   }
 

@@ -18,7 +18,6 @@ interface ItemCardProps {
 
 export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
   const isAvailable = item.stock_available > 0
-  const sensitiveLabel = item.is_sensitive ? 'Sensitif' : ''
   const [showModal, setShowModal] = useState(false)
   const { addItem, isInCart } = useCart()
 
@@ -28,9 +27,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
       name: item.name,
       quantity: 1,
       stock_available: item.stock_available,
-      // category: item.category,
       images: item.images || [],
-      is_sensitive: item.is_sensitive,
     })
   }
 
@@ -62,11 +59,6 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
               <Badge variant="default" className="flex items-center gap-1">
                 {/* <span>{item.category.icon}</span> */}
                 {item.category.name}
-              </Badge>
-            )}
-            {item.is_sensitive && (
-              <Badge variant="secondary">
-                {sensitiveLabel}
               </Badge>
             )}
             <Badge variant={isAvailable ? 'success' : 'destructive'}>

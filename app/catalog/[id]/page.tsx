@@ -66,11 +66,6 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
                     {item.category.name}
                   </span>
                 )}
-                {item.is_sensitive && (
-                  <span className="text-sm bg-secondary-100 text-secondary-700 px-3 py-1 rounded font-medium">
-                    Sensitif
-                  </span>
-                )}
                 <span className={`text-sm px-3 py-1 rounded font-medium ${
                   isAvailable 
                     ? 'bg-green-100 text-green-700' 

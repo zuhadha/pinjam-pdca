@@ -14,7 +14,6 @@ export interface CartItem {
     image_url: string
     display_order: number
   }>
-  is_sensitive: boolean
   addedAt: string // ISO date string
 }
 
