@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { verifyReturn } from '@/lib/actions/admin-actions'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface RequestsTableProps {
   requests: any[]
@@ -15,13 +25,21 @@ export function RequestsTable({ requests }: RequestsTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    requestId: string | null
+  }>({
+    open: false,
+    requestId: null,
+  })
 
-  const handleVerifyReturn = async (requestId: string) =>{
-    if (!confirm('Apakah Anda yakin barang sudah dikembalikan dengan baik?')) return
+  const handleVerifyReturn = async () => {
+    if (!confirmDialog.requestId) return
 
-    setActionLoading(requestId)
-    const result = await verifyReturn(requestId, adminNotes)
+    setActionLoading(confirmDialog.requestId)
+    const result = await verifyReturn(confirmDialog.requestId, adminNotes)
     setActionLoading(null)
+    setConfirmDialog({ open: false, requestId: null })
 
     if (result.error) {
       toast.error(result.error)
@@ -154,7 +172,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                 <div className="flex gap-3">
                   {needsVerification && (
                     <Button
-                      onClick={() => handleVerifyReturn(request.id)}
+                      onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
                       variant="primary"
                       disabled={actionLoading === request.id}
                       className="flex-1"
@@ -182,6 +200,28 @@ export function RequestsTable({ requests }: RequestsTableProps) {
           </div>
         )
       })}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !actionLoading && setConfirmDialog({ ...confirmDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Verifikasi Pengembalian</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin barang sudah dikembalikan dengan baik dan dalam kondisi yang sesuai?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!actionLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleVerifyReturn}
+              disabled={!!actionLoading}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              {actionLoading ? 'Memproses...' : 'Ya, Verifikasi'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
