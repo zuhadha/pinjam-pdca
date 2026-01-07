@@ -11,11 +11,19 @@ export interface BorrowRequestItem {
 
 export interface CreateBorrowRequestInput {
   items: BorrowRequestItem[]
-  startDatetime: string // ISO 8601 datetime string
-  endDatetime: string // ISO 8601 datetime string
+
+  // Request type flag
+  isPermanent: boolean
+
+  // Required for borrowing (isPermanent = false), optional for permanent requests
+  startDatetime?: string // ISO 8601 datetime string
+  endDatetime?: string // ISO 8601 datetime string
+
+  // Common fields
   usageLocation: string
   purpose: string
   notes?: string
+  department?: string // Department requesting the item
 }
 
 export async function createBorrowRequest(input: CreateBorrowRequestInput) {
@@ -35,35 +43,47 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       return { error: 'Lokasi penggunaan harus diisi' }
     }
 
-    // Parse and validate datetime
-    const startDatetime = new Date(input.startDatetime)
-    const endDatetime = new Date(input.endDatetime)
+    // Validate based on request type
+    let startDatetime: Date | null = null
+    let endDatetime: Date | null = null
+    let isSameDay = false
 
-    if (isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime())) {
-      return { error: 'Format tanggal/waktu tidak valid' }
-    }
-
-    if (endDatetime <= startDatetime) {
-      return { error: 'Waktu selesai harus setelah waktu mulai' }
-    }
-
-    // Auto-detect if same-day borrowing
-    const isSameDay = startDatetime.toDateString() === endDatetime.toDateString()
-
-    // Validate based on borrowing type
-    if (isSameDay) {
-      // Same-day validation: already checked end > start above
-      const timeDiff = (endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60) // minutes
-      if (timeDiff < 30) {
-        return { error: 'Durasi peminjaman minimal 30 menit' }
+    if (!input.isPermanent) {
+      // Borrowing: dates are required
+      if (!input.startDatetime || !input.endDatetime) {
+        return { error: 'Tanggal mulai dan selesai diperlukan untuk peminjaman barang' }
       }
-    } else {
-      // Multi-day validation: end must be at least 1 day after start
-      const daysDiff = Math.floor((endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysDiff < 1) {
-        return { error: 'Untuk peminjaman multi-hari, durasi minimal 1 hari penuh' }
+
+      startDatetime = new Date(input.startDatetime)
+      endDatetime = new Date(input.endDatetime)
+
+      if (isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime())) {
+        return { error: 'Format tanggal/waktu tidak valid' }
+      }
+
+      if (endDatetime <= startDatetime) {
+        return { error: 'Waktu selesai harus setelah waktu mulai' }
+      }
+
+      // Auto-detect if same-day borrowing
+      isSameDay = startDatetime.toDateString() === endDatetime.toDateString()
+
+      // Validate based on borrowing type
+      if (isSameDay) {
+        // Same-day validation
+        const timeDiff = (endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60) // minutes
+        if (timeDiff < 30) {
+          return { error: 'Durasi peminjaman minimal 30 menit' }
+        }
+      } else {
+        // Multi-day validation
+        const daysDiff = Math.floor((endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysDiff < 1) {
+          return { error: 'Untuk peminjaman multi-hari, durasi minimal 1 hari penuh' }
+        }
       }
     }
+    // For permanent requests (isPermanent = true), dates are not required
 
     // Check if any item is sensitive
     const itemIds = input.items.map(i => i.itemId)
@@ -95,12 +115,14 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       .from('borrow_requests')
       .insert({
         user_id: user.id,
-        start_datetime: input.startDatetime,
-        end_datetime: input.endDatetime,
+        is_permanent: input.isPermanent,
+        start_datetime: startDatetime?.toISOString() || null,
+        end_datetime: endDatetime?.toISOString() || null,
         usage_location: input.usageLocation.trim(),
         is_same_day: isSameDay,
         purpose: input.purpose,
         notes: input.notes,
+        department: input.department || null,
         status: status,
         approved_at: new Date().toISOString(),
         approved_by: user.id,
@@ -149,7 +171,9 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       success: true,
       requestId: borrowRequest.id,
       status: status,
-      message: 'Peminjaman berhasil! Barang sudah bisa diambil.'
+      message: input.isPermanent
+        ? 'Permintaan barang berhasil! Silakan ambil barang dari admin.'
+        : 'Peminjaman berhasil! Barang sudah bisa diambil.'
     }
   } catch (error) {
     console.error('Error creating borrow request:', error)

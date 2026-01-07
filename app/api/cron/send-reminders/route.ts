@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('status', 'borrowed')
+      .eq('is_permanent', false) // Skip permanent requests - no reminder needed
       .lt('end_datetime', new Date().toISOString())
 
     if (queryError) {
