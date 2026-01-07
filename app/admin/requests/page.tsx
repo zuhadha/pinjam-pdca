@@ -15,6 +15,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
   const requests = await getAllBorrowRequests({
     status: params.status,
     search: params.search,
+    isPermanent: false, // Only show borrowing requests (not permanent)
   })
 
   return (
@@ -33,7 +34,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         <CardHeader>
           <CardTitle>Daftar Peminjaman</CardTitle>
           <CardDescription>
-            Menampilkan {requests.length} peminjaman
+            Menampilkan {requests.length} peminjaman (tidak termasuk permintaan permanent)
           </CardDescription>
         </CardHeader>
         <CardContent>

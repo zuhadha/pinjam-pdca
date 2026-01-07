@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Kelola Barang', href: '/admin/items', icon: Package },
   { name: 'Kelola Peminjaman', href: '/admin/requests', icon: FileText },
+  { name: 'Kelola Permintaan Barang', href: '/admin/permanent-requests', icon: FileText },
   // { name: 'Pengaturan', href: '/admin/settings', icon: Settings },
 ]
 

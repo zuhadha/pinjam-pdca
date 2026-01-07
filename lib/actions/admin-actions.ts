@@ -65,6 +65,7 @@ export async function getAdminStats() {
 export async function getAllBorrowRequests(filters?: {
   status?: string
   search?: string
+  isPermanent?: boolean // Filter for permanent vs borrowing
 }) {
   const supabase = await createClient()
   const user = await getCurrentUser()
@@ -87,6 +88,10 @@ export async function getAllBorrowRequests(filters?: {
     .order('created_at', { ascending: false })
 
   // Apply filters
+  if (filters?.isPermanent !== undefined) {
+    query = query.eq('is_permanent', filters.isPermanent)
+  }
+
   if (filters?.status) {
     if (filters.status === 'awaiting_verification') {
       query = query.not('return_declared_at', 'is', null).is('return_verified_at', null)
