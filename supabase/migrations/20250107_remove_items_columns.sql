@@ -15,5 +15,9 @@ ALTER TABLE items DROP COLUMN IF EXISTS is_active;
 DROP INDEX IF EXISTS idx_items_is_sensitive;
 DROP INDEX IF EXISTS idx_items_is_active;
 
+-- 5. Create new RLS policy for public read access (no is_active filter needed)
+CREATE POLICY "Allow everyone to view all items" ON items
+  FOR SELECT USING (true);
+
 -- Note: All items are now treated equally (no sensitive items)
 -- Note: Deletion is permanent (no soft delete)
