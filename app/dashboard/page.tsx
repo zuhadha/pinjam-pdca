@@ -25,8 +25,15 @@ export default async function DashboardPage() {
 
   // Count stats
   const activeBorrows = borrowRequests.filter(r => r.status === 'approved' || r.status === 'borrowed').length
-  const pendingRequests = borrowRequests.filter(r => r.status === 'pending').length
-  const returnDeclared = borrowRequests.filter(r => r.status === 'return_declared').length
+  const awaitingVerification = borrowRequests.filter(r => r.return_declared_at && !r.return_verified_at).length
+  
+  // Calculate overdue (borrowed items past end_datetime)
+  const now = new Date()
+  const overdueBorrows = borrowRequests.filter(r => {
+    if (r.status !== 'borrowed' || r.is_permanent) return false
+    if (!r.end_datetime) return false
+    return new Date(r.end_datetime) < now
+  }).length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,31 +44,11 @@ export default async function DashboardPage() {
           <p className="text-gray-600 mt-2">Selamat datang, {user.name}!</p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="hover:shadow-md transition-shadow">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="hover:shadow-md transition-shadow text-center">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">📦</span>
-                Pinjam Barang
-              </CardTitle>
-              <CardDescription>
-                Lihat katalog dan ajukan peminjaman barang
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href="/catalog">
-                <Button variant="primary" className="w-full">
-                  Lihat Katalog
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">📋</span>
+              <CardTitle>
                 Peminjaman Aktif
               </CardTitle>
               <CardDescription>
@@ -76,20 +63,36 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow text-center">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">⏳</span>
-                Menunggu Persetujuan
+              <CardTitle>
+                Menunggu Verifikasi
               </CardTitle>
               <CardDescription>
-                Pengajuan yang menunggu persetujuan admin
+                Pengembalian yang menunggu verifikasi admin
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-4">
-                <p className="text-4xl font-bold text-secondary-600">{pendingRequests}</p>
-                <p className="text-sm text-gray-600 mt-1">Pengajuan Pending</p>
+                <p className="text-4xl font-bold text-blue-600">{awaitingVerification}</p>
+                <p className="text-sm text-gray-600 mt-1">Menunggu Verifikasi</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow text-center">
+            <CardHeader>
+              <CardTitle>
+                Terlambat Dikembalikan
+              </CardTitle>
+              <CardDescription>
+                Peminjaman yang melewati batas waktu
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-4">
+                <p className={`text-4xl font-bold ${overdueBorrows === 0 ? 'text-green-600' : 'text-red-600'}`}>{overdueBorrows}</p>
+                <p className="text-sm text-gray-600 mt-1">Item Terlambat</p>
               </div>
             </CardContent>
           </Card>
