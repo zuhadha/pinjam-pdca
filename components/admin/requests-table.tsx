@@ -45,7 +45,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     <div className="space-y-4">
       {requests.map((request) => {
         const isExpanded = expandedId === request.id
-        const needsVerification = request.return_declared_at && !request.return_verified_at
+        const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
 
         return (
           <div
@@ -62,18 +62,21 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                    <Badge variant={
                      needsVerification ? 'blue' :
                      request.status === 'pending' ? 'warning' :
-                     request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                     request.status === 'approved' || request.status === 'borrowed' ? (request.is_permanent ? 'default' : 'success') :
                      request.status === 'rejected' ? 'destructive' :
                      'gray'
                    }>
                      {needsVerification ? '🔄 Verifikasi Return' :
                       request.status === 'pending' ? '⏳ Pending' :
                       request.status === 'approved' ? '✓ Approved' :
-                      request.status === 'borrowed' ? '📦 Dipinjam' :
+                      request.status === 'borrowed' ? (request.is_permanent ? '📦 Taken' : '📦 Dipinjam') :
                       request.status === 'rejected' ? '✗ Ditolak' :
                       request.status === 'returned' ? '✓ Dikembalikan' :
                       request.status}
                    </Badge>
+                   {request.is_permanent && (
+                     <Badge variant="secondary">Permanent</Badge>
+                   )}
                    {request.is_same_day && (
                      <Badge variant="outline">⏰ Sehari</Badge>
                    )}

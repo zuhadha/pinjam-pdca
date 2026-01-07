@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                       <div className='flex gap-2'>
                         <Badge variant={
                            request.return_declared_at ? 'blue' :
-                           request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                           request.status === 'approved' || request.status === 'borrowed' ? (request.is_permanent ? 'default' : 'success') :
                            request.status === 'pending' ? 'warning' :
                            request.status === 'rejected' ? 'destructive' :
                            request.status === 'returned' ? 'gray' :
@@ -121,12 +121,15 @@ export default async function DashboardPage() {
                          }>
                            {request.return_declared_at ? 'Menunggu Verifikasi' :
                             request.status === 'approved' ? 'Disetujui' :
-                            request.status === 'borrowed' ? 'Sedang Dipinjam' :
+                            request.status === 'borrowed' ? (request.is_permanent ? 'Taken' : 'Sedang Dipinjam') :
                             request.status === 'pending' ? 'Menunggu Persetujuan' :
                             request.status === 'rejected' ? 'Ditolak' :
                             request.status === 'returned' ? 'Dikembalikan' :
                             request.status}
                          </Badge>
+                         {request.is_permanent && (
+                           <Badge variant="secondary">Permanent</Badge>
+                         )}
                          {request.is_same_day && (
                            <Badge variant="outline">Sehari</Badge>
                          )}
@@ -176,8 +179,8 @@ export default async function DashboardPage() {
                       <p className="font-medium text-gray-900">{request.usage_location}</p>
                     </div>
 
-                    {/* Actions */}
-                    {!request.return_declared_at && (request.status === 'approved' || request.status === 'borrowed') && (
+                    {/* Actions - Hide for permanent requests */}
+                    {!request.is_permanent && !request.return_declared_at && (request.status === 'approved' || request.status === 'borrowed') && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <ReturnButton requestId={request.id} />
                       </div>

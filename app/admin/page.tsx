@@ -113,16 +113,19 @@ export default async function AdminDashboardPage() {
                     <div className="flex items-center gap-3 mb-2">
                       <Badge variant={
                         request.status === 'pending' ? 'warning' :
-                        request.status === 'approved' || request.status === 'borrowed' ? 'success' :
+                        request.status === 'approved' || request.status === 'borrowed' ? (request.is_permanent ? 'default' : 'success') :
                         request.status === 'rejected' ? 'destructive' :
                         'gray'
                       }>
                         {request.status === 'pending' ? 'Pending' :
                          request.status === 'approved' ? 'Approved' :
-                         request.status === 'borrowed' ? 'Borrowed' :
+                         request.status === 'borrowed' ? (request.is_permanent ? 'Taken' : 'Borrowed') :
                          request.status === 'rejected' ? 'Rejected' :
                          request.status}
                       </Badge>
+                      {request.is_permanent && (
+                        <Badge variant="secondary">Permanent</Badge>
+                      )}
                       {request.return_declared_at && !request.return_verified_at && (
                         <Badge variant="blue">
                           Perlu Verifikasi
