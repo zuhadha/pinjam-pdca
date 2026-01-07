@@ -18,7 +18,10 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [items, setItems] = useState<BorrowRequestItem[]>(
     initialItems.map(item => ({ itemId: item.id, quantity: 1 }))
   )
-  // Borrowing type state (default: same-day)
+  // Request type (borrow vs permanent)
+  const [requestType, setRequestType] = useState<'borrow' | 'request'>('borrow')
+  
+  // Borrowing type state (only for borrowing)
   const [borrowingType, setBorrowingType] = useState<'same-day' | 'multi-day'>('same-day')
   
   // Same-day fields
@@ -34,6 +37,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [usageLocation, setUsageLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
+  const [department, setDepartment] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [requiresAuth, setRequiresAuth] = useState(false)
@@ -50,29 +54,31 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       return
     }
 
-    // Validate based on borrowing type
-    let startDatetime: string
-    let endDatetime: string
+    // Validate based on request type
+    let startDatetime: string | undefined
+    let endDatetime: string | undefined
 
-    if (borrowingType === 'same-day') {
-      if (!date || !startTime || !endTime) {
-        setError('Tanggal dan waktu harus diisi lengkap')
-        setLoading(false)
-        return
+    if (requestType === 'borrow') {
+      // Borrowing requires dates
+      if (borrowingType === 'same-day') {
+        if (!date || !startTime || !endTime) {
+          setError('Tanggal dan waktu harus diisi lengkap')
+          setLoading(false)
+          return
+        }
+        startDatetime = `${date}T${startTime}:00`
+        endDatetime = `${date}T${endTime}:00`
+      } else {
+        if (!startDate || !endDate) {
+          setError('Tanggal mulai dan tanggal selesai harus diisi')
+          setLoading(false)
+          return
+        }
+        startDatetime = `${startDate}T00:00:00`
+        endDatetime = `${endDate}T23:59:59`
       }
-      // Combine date + time into ISO datetime string
-      startDatetime = `${date}T${startTime}:00`
-      endDatetime = `${date}T${endTime}:00`
-    } else {
-      if (!startDate || !endDate) {
-        setError('Tanggal mulai dan tanggal selesai harus diisi')
-        setLoading(false)
-        return
-      }
-      // Set time to start of day and end of day
-      startDatetime = `${startDate}T00:00:00`
-      endDatetime = `${endDate}T23:59:59`
     }
+    // Permanent requests don't need dates
 
     if (!purpose.trim()) {
       setError('Keperluan harus diisi')
@@ -88,11 +94,13 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     const result = await createBorrowRequest({
       items,
+      isPermanent: requestType === 'request',
       startDatetime,
       endDatetime,
       usageLocation,
       purpose,
       notes,
+      department: department || undefined,
     })
 
     if (result.error) {
@@ -124,7 +132,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
         <div className="p-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Form Peminjaman</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {requestType === 'borrow' ? 'Form Peminjaman' : 'Form Permintaan Barang'}
+            </h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -136,7 +146,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Selected Items */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Barang yang Dipinjam</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">
+                {requestType === 'borrow' ? 'Barang yang Dipinjam' : 'Barang yang Diminta'}
+              </h3>
               <div className="space-y-3">
                 {initialItems.map((item) => {
                   const selectedItem = items.find(i => i.itemId === item.id)
@@ -171,37 +183,71 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             </div>
 
-            {/* Borrowing Type Switch */}
+            {/* Request Type Switch */}
             <div>
-              <Label>Tipe Peminjaman *</Label>
+              <Label>Jenis Transaksi *</Label>
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={() => setBorrowingType('same-day')}
+                  onClick={() => setRequestType('borrow')}
                   className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                    borrowingType === 'same-day'
-                      ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                    requestType === 'borrow'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
                   }`}
                 >
-                  ⏰ Dalam Satu Hari
+                  📅 Pinjam Barang
+                  <div className="text-xs mt-1 opacity-90">(Dikembalikan)</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBorrowingType('multi-day')}
+                  onClick={() => setRequestType('request')}
                   className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                    borrowingType === 'multi-day'
-                      ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                    requestType === 'request'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
                   }`}
                 >
-                  📅 Lebih dari Satu Hari
+                  📦 Minta Barang
+                  <div className="text-xs mt-1 opacity-90">(Permanent)</div>
                 </button>
               </div>
             </div>
 
-            {/* Conditional Date/Time Inputs */}
-            {borrowingType === 'same-day' ? (
+            {/* Borrowing Type Switch (only for borrowing) */}
+            {requestType === 'borrow' && (
+              <div>
+                <Label>Tipe Peminjaman *</Label>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBorrowingType('same-day')}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                      borrowingType === 'same-day'
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    ⏰ Dalam Satu Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBorrowingType('multi-day')}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                      borrowingType === 'multi-day'
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    📅 Lebih dari Satu Hari
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Conditional Date/Time Inputs (only for borrowing) */}
+            {requestType === 'borrow' && (
+              borrowingType === 'same-day' ? (
               <>
                 <div>
                   <Label htmlFor="date">Tanggal *</Label>
@@ -261,6 +307,24 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                     required
                   />
                 </div>
+              </div>
+            )
+            )}
+
+            {/* Department field (only for permanent requests) */}
+            {requestType === 'request' && (
+              <div>
+                <Label htmlFor="department">Departemen (Opsional)</Label>
+                <Input
+                  id="department"
+                  type="text"
+                  placeholder="Contoh: Human Capital, SHE, dll"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Isi departemen jika meminta atas nama departemen/tim
+                </p>
               </div>
             )}
 
@@ -334,7 +398,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 className="flex-1"
                 disabled={loading}
               >
-                {loading ? 'Memproses...' : 'Ajukan Peminjaman'}
+                {loading ? 'Memproses...' : requestType === 'borrow' ? 'Ajukan Peminjaman' : 'Ajukan Permintaan'}
               </Button>
             </div>
 
