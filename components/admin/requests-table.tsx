@@ -1,11 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
-import { verifyReturn } from '@/lib/actions/admin-actions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +30,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { verifyReturn } from '@/lib/actions/admin-actions'
+import { CheckCircle } from 'lucide-react'
+import { Pagination } from '@/components/ui/pagination'
 
 interface RequestsTableProps {
   requests: any[]
 }
 
 export function RequestsTable({ requests }: RequestsTableProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -32,6 +52,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     open: false,
     requestId: null,
   })
+  const itemsPerPage = 10
 
   const handleVerifyReturn = async () => {
     if (!confirmDialog.requestId) return
@@ -46,160 +67,207 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     } else {
       toast.success(result.message || 'Pengembalian berhasil diverifikasi')
       setAdminNotes('')
-      setExpandedId(null)
     }
   }
 
-  if (requests.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <div className="text-6xl mb-4">📋</div>
-        <p>Tidak ada peminjaman ditemukan</p>
-      </div>
-    )
+  // Filter and search logic
+  const filteredRequests = useMemo(() => {
+    return requests.filter(request => {
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'verification' && (!request.return_declared_at || request.return_verified_at)) {
+          return false
+        } else if (statusFilter !== 'verification' && request.status !== statusFilter) {
+          return false
+        }
+      }
+
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase()
+        const matchesUser = request.user?.name?.toLowerCase().includes(searchLower)
+        const matchesItems = request.borrow_items?.some((bi: any) =>
+          bi.item?.name?.toLowerCase().includes(searchLower)
+        )
+        const matchesPurpose = request.purpose?.toLowerCase().includes(searchLower)
+
+        if (!matchesUser && !matchesItems && !matchesPurpose) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [requests, statusFilter, searchQuery])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredRequests.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredRequests, currentPage])
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [statusFilter, searchQuery])
+
+  const getStatusBadge = (request: any) => {
+    const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
+
+    if (needsVerification) {
+      return <Badge variant="blue">🔄 Verifikasi Return</Badge>
+    }
+
+    switch (request.status) {
+      case 'pending':
+        return <Badge variant="warning">⏳ Pending</Badge>
+      case 'approved':
+        return <Badge variant="success">✓ Approved</Badge>
+      case 'borrowed':
+        return request.is_permanent ? (
+          <Badge variant="default">📦 Taken</Badge>
+        ) : (
+          <Badge variant="success">📦 Dipinjam</Badge>
+        )
+      case 'rejected':
+        return <Badge variant="destructive">✗ Ditolak</Badge>
+      case 'returned':
+        return <Badge variant="gray">✓ Dikembalikan</Badge>
+      default:
+        return <Badge variant="gray">{request.status}</Badge>
+    }
   }
 
   return (
     <div className="space-y-4">
-      {requests.map((request) => {
-        const isExpanded = expandedId === request.id
-        const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Input
+          placeholder="Cari user, barang, atau keperluan..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-[200px]">
+            <SelectValue placeholder="Filter Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="borrowed">Sedang Dipinjam</SelectItem>
+            <SelectItem value="verification">Perlu Verifikasi</SelectItem>
+            <SelectItem value="returned">Dikembalikan</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="rejected">Ditolak</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        return (
-          <div
-            key={request.id}
-            className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-sm transition-shadow"
-          >
-            {/* Header */}
-            <div
-              className="p-4 bg-gray-50 cursor-pointer flex items-center justify-between"
-              onClick={() => setExpandedId(isExpanded ? null : request.id)}
-            >
-              <div className="flex-1">
-                 <div className="flex items-center gap-3 mb-2">
-                   <Badge variant={
-                     needsVerification ? 'blue' :
-                     request.status === 'pending' ? 'warning' :
-                     request.status === 'approved' || request.status === 'borrowed' ? (request.is_permanent ? 'default' : 'success') :
-                     request.status === 'rejected' ? 'destructive' :
-                     'gray'
-                   }>
-                     {needsVerification ? '🔄 Verifikasi Return' :
-                      request.status === 'pending' ? '⏳ Pending' :
-                      request.status === 'approved' ? '✓ Approved' :
-                      request.status === 'borrowed' ? (request.is_permanent ? '📦 Taken' : '📦 Dipinjam') :
-                      request.status === 'rejected' ? '✗ Ditolak' :
-                      request.status === 'returned' ? '✓ Dikembalikan' :
-                      request.status}
-                   </Badge>
-                   {request.is_permanent && (
-                     <Badge variant="secondary">Permanent</Badge>
-                   )}
-                   {request.is_same_day && (
-                     <Badge variant="outline">⏰ Sehari</Badge>
-                   )}
-                 </div>
-                 <p className="font-semibold text-gray-900">{request.user?.name} ({request.user?.nik})</p>
-                 <p className="text-sm text-gray-600">{request.purpose}</p>
-                 <p className="text-xs text-gray-500 mt-1">
-                   {request.is_same_day ? (
-                     // Same-day: show date with time range
-                     `${format(new Date(request.start_datetime), 'dd MMM yyyy, HH:mm')} - ${format(new Date(request.end_datetime), 'HH:mm')}`
-                   ) : (
-                     // Multi-day: show date range
-                     `${format(new Date(request.start_datetime), 'dd MMM yyyy')} - ${format(new Date(request.end_datetime), 'dd MMM yyyy')}`
-                   )}
-                 </p>
-              </div>
-              <span className="text-gray-400">
-                {isExpanded ? '▼' : '▶'}
-              </span>
-            </div>
-
-            {/* Expanded Content */}
-            {isExpanded && (
-              <div className="p-4 space-y-4 border-t border-gray-200">
-                {/* Items List */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Barang yang Dipinjam:</h4>
-                  <div className="space-y-2">
-                    {request.borrow_items?.map((bi: any) => (
-                      <div key={bi.id} className="flex items-center gap-2 bg-gray-50 p-3 rounded">
-                        <span>{bi.item?.category?.icon || '📦'}</span>
-                        <span className="flex-1">{bi.item?.name}</span>
-                        <span className="text-sm text-gray-600">Qty: {bi.quantity}</span>
+      {/* Table */}
+      <div className="border rounded-lg border-gray-200">
+        <Table>
+          <TableHeader>
+            <TableRow className='border-gray-200'>
+              <TableHead className="w-[120px]">Tanggal</TableHead>
+              <TableHead className="w-[150px]">User</TableHead>
+              <TableHead className="w-[180px]">Barang</TableHead>
+              <TableHead className="w-[160px]">Keperluan</TableHead>
+              <TableHead className="w-[140px]">Durasi</TableHead>
+              <TableHead className="w-[160px]">Status</TableHead>
+              <TableHead className="w-[100px] text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedRequests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  Tidak ada data yang ditemukan
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedRequests.map((request) => {
+                const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
+                
+                return (
+                  <TableRow key={request.id} className="hover:bg-gray-50 border-gray-200">
+                    <TableCell className="font-medium">
+                      {format(new Date(request.created_at), 'dd MMM yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{request.user?.name}</p>
+                        <p className="text-xs text-gray-500">{request.user?.nik}</p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                 {request.notes && (
-                   <div>
-                     <h4 className="font-semibold text-gray-900 mb-1">Catatan User:</h4>
-                     <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{request.notes}</p>
-                   </div>
-                 )}
-
-                 {/* Usage Location */}
-                 <div>
-                   <h4 className="font-semibold text-gray-900 mb-1">Lokasi Penggunaan:</h4>
-                   <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{request.usage_location}</p>
-                 </div>
-
-                {request.admin_notes && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Catatan Admin:</h4>
-                    <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded">{request.admin_notes}</p>
-                  </div>
-                )}
-
-                {/* Admin Notes Input (for verification only) */}
-                {needsVerification && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Catatan Admin (Opsional)
-                    </label>
-                    <textarea
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      placeholder="Tambahkan catatan..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent min-h-[80px]"
-                    />
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  {needsVerification && (
-                    <Button
-                      onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
-                      variant="primary"
-                      disabled={actionLoading === request.id}
-                      className="flex-1"
-                    >
-                      {actionLoading === request.id ? 'Memproses...' : '✓ Verifikasi Pengembalian'}
-                    </Button>
-                  )}
-                </div>
-
-                {/* Timestamps */}
-                <div className="text-xs text-gray-500 space-y-1 pt-4 border-t border-gray-100">
-                  <p>Dibuat: {format(new Date(request.created_at), 'dd MMM yyyy HH:mm')}</p>
-                  {request.approved_at && (
-                    <p>Disetujui: {format(new Date(request.approved_at), 'dd MMM yyyy HH:mm')}</p>
-                  )}
-                  {request.return_declared_at && (
-                    <p>Pengembalian Dilaporkan: {format(new Date(request.return_declared_at), 'dd MMM yyyy HH:mm')}</p>
-                  )}
-                  {request.return_verified_at && (
-                    <p>Pengembalian Diverifikasi: {format(new Date(request.return_verified_at), 'dd MMM yyyy HH:mm')}</p>
-                  )}
-                </div>
-              </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {request.borrow_items?.slice(0, 2).map((bi: any) => (
+                          <span key={bi.id} className="text-sm bg-gray-100 px-2 py-1 rounded">
+                            {bi.item?.name} x{bi.quantity}
+                          </span>
+                        ))}
+                        {request.borrow_items?.length > 2 && (
+                          <span className="text-sm text-gray-500">
+                            +{request.borrow_items.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[160px] truncate text-sm">
+                      {request.purpose}
+                    </TableCell>
+                    <TableCell>
+                      {request.is_permanent ? (
+                        <Badge variant="secondary">Permanent</Badge>
+                      ) : request.is_same_day ? (
+                        <span className="text-sm">
+                          {format(new Date(request.start_datetime), 'HH:mm')} - {format(new Date(request.end_datetime), 'HH:mm')}
+                        </span>
+                      ) : (
+                        <span className="text-sm">
+                          {format(new Date(request.start_datetime), 'dd MMM')} - {format(new Date(request.end_datetime), 'dd MMM')}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {getStatusBadge(request)}
+                        {request.is_permanent && (
+                          <Badge variant="secondary">Permanent</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {needsVerification && (
+                        <Button
+                          onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
+                          variant="primary"
+                          size="sm"
+                          disabled={actionLoading === request.id}
+                          className="h-6 w-12 p-0"
+                          title="Verifikasi Pengembalian"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
-          </div>
-        )
-      })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredRequests.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !actionLoading && setConfirmDialog({ ...confirmDialog, open })}>
@@ -212,7 +280,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!actionLoading}>Batal</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleVerifyReturn}
               disabled={!!actionLoading}
               className="bg-primary-600 hover:bg-primary-700"

@@ -27,15 +27,12 @@ export default async function PermanentRequestsPage({ searchParams }: PermanentR
       </div>
 
       {/* Filters */}
-      <RequestFilters />
+      {/* <RequestFilters /> */}
 
       {/* Requests Table */}
       <Card>
         <CardHeader>
           <CardTitle>Daftar Permintaan Barang</CardTitle>
-          <CardDescription>
-            Menampilkan {requests.length} permintaan
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <RequestsTable requests={requests} />

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { declareBorrowReturn } from '@/lib/actions/borrow-actions'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { Redo2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +19,10 @@ import {
 
 interface ReturnButtonProps {
   requestId: string
+  compact?: boolean // For table view - shows only icon
 }
 
-export function ReturnButton({ requestId }: ReturnButtonProps) {
+export function ReturnButton({ requestId, compact = false }: ReturnButtonProps) {
   const [loading, setLoading] = useState(false)
 
   const handleReturn = async () => {
@@ -39,11 +41,17 @@ export function ReturnButton({ requestId }: ReturnButtonProps) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
-          variant="primary"
           disabled={loading}
-          className="w-full sm:w-auto"
+          variant="primary"
+          size={compact ? "sm" : "md"}
+          className={compact ? "h-6 w-12 p-0 px-0" : "w-full sm:w-auto"}
+          title={compact ? "Ajukan Pengembalian" : undefined}
         >
-          {loading ? 'Memproses...' : 'Laporkan Pengembalian'}
+          {compact ? (
+            <Redo2 className="h-4 w-4" />
+          ) : (
+            loading ? 'Memproses...' : '🔄 Laporkan Pengembalian'
+          )}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

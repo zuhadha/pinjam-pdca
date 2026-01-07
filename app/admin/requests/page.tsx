@@ -27,15 +27,12 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
       </div>
 
       {/* Filters */}
-      <RequestFilters />
+      {/* <RequestFilters /> */}
 
       {/* Requests Table */}
       <Card>
         <CardHeader>
           <CardTitle>Daftar Peminjaman</CardTitle>
-          <CardDescription>
-            Menampilkan {requests.length} peminjaman (tidak termasuk permintaan permanent)
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <RequestsTable requests={requests} />

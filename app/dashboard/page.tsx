@@ -8,6 +8,8 @@ import { ReturnButton } from '@/components/dashboard/return-button'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
+import { BorrowHistoryTable } from '@/components/dashboard/borrow-history-table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -98,118 +100,37 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        {/* Borrow Requests List */}
+        {/* History Tables with Tabs */}
         <Card>
           <CardHeader>
-            <CardTitle>Riwayat Peminjaman</CardTitle>
+            <CardTitle>Riwayat Aktivitas</CardTitle>
             <CardDescription>
-              Aktivitas peminjaman barang Anda
+              Peminjaman dan permintaan barang Anda
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {borrowRequests.length > 0 ? (
-              <div className="space-y-4">
-                {borrowRequests.map((request) => (
-                  <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className='flex gap-2'>
-                        <Badge variant={
-                           request.return_declared_at ? 'blue' :
-                           request.status === 'approved' || request.status === 'borrowed' ? (request.is_permanent ? 'default' : 'success') :
-                           request.status === 'pending' ? 'warning' :
-                           request.status === 'rejected' ? 'destructive' :
-                           request.status === 'returned' ? 'gray' :
-                           'gray'
-                         }>
-                           {request.return_declared_at ? 'Menunggu Verifikasi' :
-                            request.status === 'approved' ? 'Disetujui' :
-                            request.status === 'borrowed' ? (request.is_permanent ? 'Taken' : 'Sedang Dipinjam') :
-                            request.status === 'pending' ? 'Menunggu Persetujuan' :
-                            request.status === 'rejected' ? 'Ditolak' :
-                            request.status === 'returned' ? 'Dikembalikan' :
-                            request.status}
-                         </Badge>
-                         {request.is_permanent && (
-                           <Badge variant="secondary">Permanent</Badge>
-                         )}
-                         {request.is_same_day && (
-                           <Badge variant="outline">Sehari</Badge>
-                         )}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(request.created_at), 'dd MMM yyyy', { locale: idLocale })}
-                      </p>
-                    </div>
-
-                    {/* Items */}
-                    <div className="mb-3">
-                      <p className="text-sm font-semibold text-gray-700 mb-2">Barang:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {request.borrow_items?.map((bi: any) => (
-                          <span key={bi.id} className="inline-flex items-center gap-1 bg-gray-100 px-3 py-1 rounded text-sm">
-                            <span>{bi.item?.category?.icon || '📦'}</span>
-                            <span>{bi.item?.name}</span>
-                            <span className="text-gray-600">x{bi.quantity}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
-                      <div>
-                        <span className="text-gray-600">Tanggal:</span>
-                        <p className="font-medium text-gray-900">
-                          {request.is_same_day ? (
-                            // Same-day: show date with time range
-                            `${format(new Date(request.start_datetime), 'dd MMM yyyy', { locale: idLocale })}, ${format(new Date(request.start_datetime), 'HH:mm')} - ${format(new Date(request.end_datetime), 'HH:mm')}`
-                          ) : (
-                            // Multi-day: show date range
-                            `${format(new Date(request.start_datetime), 'dd MMM', { locale: idLocale })} - ${format(new Date(request.end_datetime), 'dd MMM yyyy', { locale: idLocale })}`
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Keperluan:</span>
-                        <p className="font-medium text-gray-900">{request.purpose}</p>
-                      </div>
-                    </div>
-
-                    {/* Usage Location */}
-                    <div className="mb-3 text-sm">
-                      <span className="text-gray-600">Lokasi Penggunaan:</span>
-                      <p className="font-medium text-gray-900">{request.usage_location}</p>
-                    </div>
-
-                    {/* Actions - Hide for permanent requests */}
-                    {!request.is_permanent && !request.return_declared_at && (request.status === 'approved' || request.status === 'borrowed') && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <ReturnButton requestId={request.id} />
-                      </div>
-                    )}
-
-                    {request.return_declared_at && !request.return_verified_at && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-sm text-blue-700 bg-blue-50 p-3 rounded">
-                          ℹ️ Pengembalian barang Anda sedang menunggu verifikasi admin.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📝</div>
-                <p className="text-gray-600 mb-4">Belum ada riwayat peminjaman</p>
-                <Link href="/catalog">
-                  <Button variant="outline">
-                    Mulai Pinjam Barang
-                  </Button>
-                </Link>
-              </div>
-            )}
+            <Tabs defaultValue="borrowing" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="borrowing">
+                  Peminjaman
+                </TabsTrigger>
+                <TabsTrigger value="permanent">
+                  Permintaan Barang
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="borrowing">
+                <BorrowHistoryTable 
+                  requests={borrowRequests.filter(r => !r.is_permanent)} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="permanent">
+                <BorrowHistoryTable 
+                  requests={borrowRequests.filter(r => r.is_permanent)} 
+                />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
