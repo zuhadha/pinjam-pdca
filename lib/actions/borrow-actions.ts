@@ -23,7 +23,6 @@ export interface CreateBorrowRequestInput {
   usageLocation: string
   purpose: string
   notes?: string
-  department?: string // Department requesting the item
 }
 
 export async function createBorrowRequest(input: CreateBorrowRequestInput) {
@@ -122,7 +121,6 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         is_same_day: isSameDay,
         purpose: input.purpose,
         notes: input.notes,
-        department: input.department || null,
         status: status,
         approved_at: new Date().toISOString(),
         approved_by: user.id,

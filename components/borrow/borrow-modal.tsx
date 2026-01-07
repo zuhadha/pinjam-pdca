@@ -37,7 +37,6 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [usageLocation, setUsageLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
-  const [department, setDepartment] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [requiresAuth, setRequiresAuth] = useState(false)
@@ -100,7 +99,6 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       usageLocation,
       purpose,
       notes,
-      department: department || undefined,
     })
 
     if (result.error) {
@@ -309,23 +307,6 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 </div>
               </div>
             )
-            )}
-
-            {/* Department field (only for permanent requests) */}
-            {requestType === 'request' && (
-              <div>
-                <Label htmlFor="department">Departemen (Opsional)</Label>
-                <Input
-                  id="department"
-                  type="text"
-                  placeholder="Contoh: Human Capital, SHE, dll"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Isi departemen jika meminta atas nama departemen/tim
-                </p>
-              </div>
             )}
 
             {/* Usage Location */}
