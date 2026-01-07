@@ -1,6 +1,8 @@
 import { FeaturedItems } from '@/components/landing/featured-items'
+import { getCurrentUser } from '@/lib/auth/actions'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getCurrentUser()
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -32,11 +34,13 @@ export default function HomePage() {
                   Lihat Barang Tersedia
                 </button>
               </a>
-              <a href="/login">
-                <button className="px-8 py-4 bg-primary-800 text-white rounded-lg font-semibold hover:bg-primary-900 transition-colors border-2 border-white/20">
-                  Login Sekarang
-                </button>
-              </a>
+              {!user && (
+                <a href="/login">
+                  <button className="px-8 py-4 bg-primary-800 text-white rounded-lg font-semibold hover:bg-primary-900 transition-colors border-2 border-white/20">
+                    Login Sekarang
+                  </button>
+                </a>
+              )}
             </div>
           </div>
         </div>
