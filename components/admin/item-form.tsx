@@ -36,6 +36,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
     category_id: initialData?.category_id || '',
     stock_total: initialData?.stock_total || 0,
     location: initialData?.location || '',
+    is_borrowable: initialData?.is_borrowable ?? true, // Default to borrowable
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,6 +152,40 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               placeholder="Contoh: Ruang IT - Rak A1"
             />
+          </div>
+
+          {/* Item Type */}
+          <div>
+            <Label>Tipe Barang *</Label>
+            <div className="mt-2 space-y-2">
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderColor: formData.is_borrowable ? '#0066cc' : '#d1d5db' }}>
+                <input
+                  type="radio"
+                  name="item_type"
+                  checked={formData.is_borrowable === true}
+                  onChange={() => setFormData({ ...formData, is_borrowable: true })}
+                  className="h-4 w-4 text-primary-600"
+                />
+                <div>
+                  <span className="font-medium text-gray-900">Barang Pinjaman</span>
+                  <p className="text-sm text-gray-600">Barang dipinjam sementara dan harus dikembalikan</p>
+                </div>
+              </label>
+              
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderColor: formData.is_borrowable === false ? '#0066cc' : '#d1d5db' }}>
+                <input
+                  type="radio"
+                  name="item_type"
+                  checked={formData.is_borrowable === false}
+                  onChange={() => setFormData({ ...formData, is_borrowable: false })}
+                  className="h-4 w-4 text-primary-600"
+                />
+                <div>
+                  <span className="font-medium text-gray-900">Barang Permintaan</span>
+                  <p className="text-sm text-gray-600">Barang diminta untuk dipakai permanent (tidak perlu dikembalikan)</p>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Images */}

@@ -1,8 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { deleteItem } from '@/lib/actions/item-management-actions'
 import { Edit, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -17,6 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Pagination } from '@/components/ui/pagination'
 
 interface ItemsTableProps {
   items: any[]
@@ -29,6 +38,11 @@ export function ItemsTable({ items }: ItemsTableProps) {
     itemId: null,
     itemName: '',
   })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const handleDeleteClick = (itemId: string, itemName: string) => {
     setDeleteDialog({ open: true, itemId, itemName })
@@ -49,140 +63,244 @@ export function ItemsTable({ items }: ItemsTableProps) {
     }
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <div className="text-6xl mb-4">📦</div>
-        <p>Tidak ada barang ditemukan</p>
-      </div>
-    )
-  }
+  // Filter and search logic
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase()
+        const matchesSearch = 
+          item.name.toLowerCase().includes(searchLower) ||
+          (item.description && item.description.toLowerCase().includes(searchLower)) ||
+          (item.location && item.location.toLowerCase().includes(searchLower))
+        if (!matchesSearch) return false
+      }
+
+      // Category filter
+      if (categoryFilter !== 'all' && item.category_id !== categoryFilter) {
+        return false
+      }
+
+      // Type filter (borrowable vs requestable)
+      if (typeFilter === 'borrowable' && !item.is_borrowable) {
+        return false
+      }
+      if (typeFilter === 'requestable' && item.is_borrowable) {
+        return false
+      }
+
+      return true
+    })
+  }, [items, searchQuery, categoryFilter, typeFilter])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [searchQuery, categoryFilter, typeFilter])
+
+  // Get unique categories from items
+  const categories = useMemo(() => {
+    const categoryMap = new Map()
+    items.forEach(item => {
+      if (item.category) {
+        categoryMap.set(item.category.id, item.category.name)
+      }
+    })
+    return Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name }))
+  }, [items])
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Barang
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Kategori
-            </th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Stok
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Aksi
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {items.map((item) => {
-            const stockPercentage = item.stock_total > 0 
-              ? (item.stock_available / item.stock_total) * 100 
-              : 0
-            const isLowStock = stockPercentage < 20 && item.stock_total > 0
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Input
+          placeholder="Cari nama, deskripsi, atau lokasi..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-auto leading-none text-sm sm:max-w-xs"
+        />
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="sm:w-[200px]">
+            <SelectValue placeholder="Semua Kategori" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Kategori</SelectItem>
+            {categories.map(cat => (
+              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="sm:w-[200px]">
+            <SelectValue placeholder="Semua Tipe" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Tipe</SelectItem>
+            <SelectItem value="borrowable">Pinjaman</SelectItem>
+            <SelectItem value="requestable">Permintaan</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="text-sm text-gray-600 flex items-center ml-auto">
+          {filteredItems.length} barang
+        </div>
+      </div>
 
-            return (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    {item.photo_url ? (
-                      <img
-                        src={item.photo_url}
-                        alt={item.name}
-                        className="h-12 w-12 rounded object-cover"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center text-2xl">
-                        {item.category?.icon || '📦'}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-900">{item.name}</p>
-                      {item.description && (
-                        <p className="text-sm text-gray-600 truncate max-w-xs">
-                          {item.description}
-                        </p>
-                      )}
-                      {item.location && (
-                        <p className="text-xs text-gray-500">📍 {item.location}</p>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <Badge variant="default" className="min-w-[120px] justify-center">
-                    {/* <span>{item.category?.icon}</span> */}
-                    <span>{item.category?.name || '-'}</span>
-                  </Badge>
-                </td>
-                <td className="px-3 py-4">
-                  <div className="flex justify-center">
-                    <p className="font-medium text-xs text-gray-900">
-                      {item.stock_available}/{item.stock_total}
-                    </p>
-                    {isLowStock && (
-                      <p className="text-xs text-red-600 font-medium">⚠️ Stok Menipis</p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    {item.stock_available === 0 && (
-                      <Badge variant="gray" className="min-w-[50px] justify-center">
-                        Habis
-                      </Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center">
-                    <Link href={`/admin/items/edit/${item.id}`}>
-                      <Button variant="ghost" size="sm" className="flex items-center gap-1">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Button
-                      onClick={() => handleDeleteClick(item.id, item.name)}
-                      disabled={deleteLoading === item.id}
-                      size="sm"
-                      variant='ghost'
-                      className="text-red-500"
-                    >
-                      {deleteLoading === item.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      {paginatedItems.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <div className="text-6xl mb-4">📦</div>
+          <p>Tidak ada barang ditemukan</p>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Barang
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kategori
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tipe
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Stok
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedItems.map((item) => {
+                  const stockPercentage = item.stock_total > 0 
+                    ? (item.stock_available / item.stock_total) * 100 
+                    : 0
+                  const isLowStock = stockPercentage < 20 && item.stock_total > 0
 
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !deleteLoading && setDeleteDialog({ ...deleteDialog, open })}>
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {item.images?.[0]?.image_url ? (
+                            <img
+                              src={item.images[0].image_url}
+                              alt={item.name}
+                              className="h-12 w-12 rounded-md object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 text-2xl">
+                              📦
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium text-gray-900">{item.name}</div>
+                            {item.description && (
+                              <div className="text-sm text-gray-500 line-clamp-1">{item.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {item.category ? item.category.name : '-'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={item.is_borrowable ? 'default' : 'secondary'}>
+                          {item.is_borrowable ? 'Pinjaman' : 'Permintaan'}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-4 text-sm">
+                        <div className="flex flex-col gap-1">
+                          <span className={`font-medium ${item.stock_available === 0 ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-900'}`}>
+                            {item.stock_available}/{item.stock_total}
+                          </span>
+                          {item.stock_available === 0 && (
+                            <span className="text-xs text-red-600">Habis</span>
+                          )}
+                          {isLowStock && item.stock_available > 0 && (
+                            <span className="text-xs text-yellow-600">Rendah</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={item.is_active ? 'success' : 'secondary'}>
+                          {item.is_active ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Link href={`/admin/items/edit/${item.id}`}>
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              className="h-8 px-3"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleDeleteClick(item.id, item.name)}
+                            disabled={deleteLoading === item.id}
+                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            {deleteLoading === item.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="w-full pt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredItems.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, itemId: null, itemName: '' })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Barang</AlertDialogTitle>
+            <AlertDialogTitle>Hapus Barang?</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus "{deleteDialog.itemName}"? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus barang &quot;{deleteDialog.itemName}&quot;? 
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Hapus
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              {deleteLoading ? 'Menghapus...' : 'Hapus'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
