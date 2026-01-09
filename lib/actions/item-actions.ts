@@ -10,6 +10,7 @@ export interface Item {
   stock_total: number
   stock_available: number
   location: string | null
+  is_borrowable: boolean
   created_at: string
   updated_at: string
   category?: {
@@ -46,7 +47,8 @@ export async function getItems(filters?: {
       category:categories(id, name, icon),
       images:item_images(id, image_url, display_order)
     `)
-    .order('created_at', { ascending: false })
+    .order('stock_available', { ascending: false }) // Items with stock first
+    .order('name', { ascending: true }) // Then alphabetically
     .order('display_order', { foreignTable: 'item_images', ascending: true })
 
   if (filters?.search) {
@@ -112,22 +114,37 @@ export async function getItemById(id: string) {
 export async function getFeaturedItems(limit: number = 6) {
   const supabase = await createClient()
 
+  // Get items with highest borrow frequency
   const { data, error } = await supabase
     .from('items')
     .select(`
       *,
       category:categories(id, name, icon),
-      images:item_images(id, image_url, display_order)
+      images:item_images(id, image_url, display_order),
+      borrow_items(item_id)
     `)
-    .gt('stock_available', 0)
-    .order('created_at', { ascending: false })
+    .gt('stock_available', 0) // Only show available items
     .order('display_order', { foreignTable: 'item_images', ascending: true })
-    .limit(limit)
 
   if (error) {
     console.error('Error fetching featured items:', error)
     return []
   }
 
-  return data as Item[]
+  // Calculate borrow count and sort by popularity
+  const itemsWithCount = (data as any[]).map(item => ({
+    ...item,
+    borrow_count: item.borrow_items?.length || 0
+  }))
+
+  // Sort by borrow frequency (desc), then by name
+  itemsWithCount.sort((a, b) => {
+    if (b.borrow_count !== a.borrow_count) {
+      return b.borrow_count - a.borrow_count
+    }
+    return a.name.localeCompare(b.name)
+  })
+
+  // Remove borrow_items from response and limit
+  return itemsWithCount.slice(0, limit).map(({ borrow_items, ...item }) => item) as Item[]
 }
