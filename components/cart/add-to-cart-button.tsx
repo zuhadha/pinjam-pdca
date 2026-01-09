@@ -33,6 +33,7 @@ export function AddToCartButton({ item }: AddToCartButtonProps) {
       stock_available: item.stock_available,
       category: item.category || undefined,
       images: item.images || [],
+      is_borrowable: item.is_borrowable ?? true,
     })
   }
 

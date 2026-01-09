@@ -9,7 +9,7 @@ import { createBorrowRequest, type BorrowRequestItem } from '@/lib/actions/borro
 import { toast } from 'sonner'
 
 interface BorrowModalProps {
-  initialItems?: Array<{ id: string; name: string; stock_available: number }>
+  initialItems?: Array<{ id: string; name: string; stock_available: number; is_borrowable: boolean }>
   onClose: () => void
 }
 
@@ -18,8 +18,10 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [items, setItems] = useState<BorrowRequestItem[]>(
     initialItems.map(item => ({ itemId: item.id, quantity: 1 }))
   )
-  // Request type (borrow vs permanent)
-  const [requestType, setRequestType] = useState<'borrow' | 'request'>('borrow')
+  
+  // Auto-detect request type from items
+  const isBorrowable = initialItems.length > 0 ? initialItems[0].is_borrowable : true
+  const isPermanent = !isBorrowable
   
   // Borrowing type state (only for borrowing)
   const [borrowingType, setBorrowingType] = useState<'same-day' | 'multi-day'>('same-day')
@@ -53,11 +55,11 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       return
     }
 
-    // Validate based on request type
+    // Validate based on item type
     let startDatetime: string | undefined
     let endDatetime: string | undefined
 
-    if (requestType === 'borrow') {
+    if (isBorrowable) {
       // Borrowing requires dates
       if (borrowingType === 'same-day') {
         if (!date || !startTime || !endTime) {
@@ -93,7 +95,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     const result = await createBorrowRequest({
       items,
-      isPermanent: requestType === 'request',
+      isPermanent,
       startDatetime,
       endDatetime,
       usageLocation,
@@ -131,7 +133,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              {requestType === 'borrow' ? 'Form Peminjaman' : 'Form Permintaan Barang'}
+              {isBorrowable ? 'Form Peminjaman' : 'Form Permintaan Barang'}
             </h2>
             <button
               onClick={onClose}
@@ -145,7 +147,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
             {/* Selected Items */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">
-                {requestType === 'borrow' ? 'Barang yang Dipinjam' : 'Barang yang Diminta'}
+                {isBorrowable ? 'Barang yang Dipinjam' : 'Barang yang Diminta'}
               </h3>
               <div className="space-y-3">
                 {initialItems.map((item) => {
@@ -181,39 +183,10 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             </div>
 
-            {/* Request Type Switch */}
-            <div>
-              <Label>Jenis Transaksi *</Label>
-              <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setRequestType('borrow')}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                    requestType === 'borrow'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                  }`}
-                >
-                  📅 Pinjam Barang
-                  <div className="text-xs mt-1 opacity-90">(Dikembalikan)</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRequestType('request')}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                    requestType === 'request'
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
-                  }`}
-                >
-                  📦 Minta Barang
-                  <div className="text-xs mt-1 opacity-90">(Permanent)</div>
-                </button>
-              </div>
-            </div>
+
 
             {/* Borrowing Type Switch (only for borrowing) */}
-            {requestType === 'borrow' && (
+            {isBorrowable && (
               <div>
                 <Label>Tipe Peminjaman *</Label>
                 <div className="flex gap-2 mt-2">
@@ -244,7 +217,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
             )}
 
             {/* Conditional Date/Time Inputs (only for borrowing) */}
-            {requestType === 'borrow' && (
+            {isBorrowable && (
               borrowingType === 'same-day' ? (
               <>
                 <div>
@@ -379,7 +352,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 className="flex-1"
                 disabled={loading}
               >
-                {loading ? 'Memproses...' : requestType === 'borrow' ? 'Ajukan Peminjaman' : 'Ajukan Permintaan'}
+                {loading ? 'Memproses...' : isBorrowable ? 'Ajukan Peminjaman' : 'Ajukan Permintaan'}
               </Button>
             </div>
 

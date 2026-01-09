@@ -28,6 +28,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
       quantity: 1,
       stock_available: item.stock_available,
       images: item.images || [],
+      is_borrowable: item.is_borrowable ?? true, // Default to borrowable if not set
     })
   }
 
@@ -44,7 +45,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
           />
           {!isAvailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">
+              <span className="text-white px-4 py-2 rounded-lg font-semibold leading-none">
                 Stok Habis
               </span>
             </div>
@@ -82,7 +83,13 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
           <div className="flex items-center justify-between mb-4 text-sm gap-x-2">
             <div className="text-gray-500 px-3 py-1.5 bg-gray-100 rounded-md flex items-center leading-none border border-gray-200">
               <Package2 className="h-4 w-4 mr-1" />
-              <strong className="text-gray-900 mr-1 leading-none">{item.stock_available}</strong> /{item.stock_total}
+              {item.is_borrowable ? (
+                // Borrowable items: show available/total
+                <><strong className="text-gray-900 mr-1 leading-none">{item.stock_available}</strong> /{item.stock_total}</>
+              ) : (
+                // Requestable items: show only available count  
+                <>Stok: <strong className="text-gray-900 ml-1 leading-none">{item.stock_available}</strong></>
+              )}
             </div>
             {item.location && (
               <div className="text-gray-500 text-sm leading-none px-3 py-1.5 bg-gray-100 rounded-md flex-1 border border-gray-200 truncate">
@@ -101,7 +108,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModal(true); }}
                       className="flex-1 py-auto bg-primary-600 text-white rounded-md font-medium hover:bg-primary-700 transition-colors"
                     >
-                      Pinjam Barang
+                      {item.is_borrowable ? 'Pinjam' : 'Minta'}
                     </button>
                     <Button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(); }}
@@ -117,7 +124,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
               ) : (
                 <button 
                   disabled 
-                  className="w-full py-2.5 bg-gray-300 text-gray-500 rounded-md font-medium cursor-not-allowed"
+                  className="w-full py-1.5 bg-gray-300 text-gray-500 rounded-md font-medium cursor-not-allowed"
                 >
                   Stok Habis
                 </button>
@@ -135,7 +142,8 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
           initialItems={[{
             id: item.id,
             name: item.name,
-            stock_available: item.stock_available
+            stock_available: item.stock_available,
+            is_borrowable: item.is_borrowable,
           }]}
           onClose={() => setShowModal(false)}
         />
