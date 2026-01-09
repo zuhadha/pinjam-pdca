@@ -38,6 +38,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = (item: Omit<CartItem, 'addedAt'>) => {
     setItems(prev => {
+      // Check if cart has items with different type
+      if (prev.length > 0) {
+        const existingType = prev[0].is_borrowable
+        if (existingType !== item.is_borrowable) {
+          const existingTypeName = existingType ? 'peminjaman' : 'permintaan'
+          const newTypeName = item.is_borrowable ? 'peminjaman' : 'permintaan'
+          toast.error(
+            `Tidak bisa mencampur barang ${existingTypeName} dan ${newTypeName}`,
+            {
+              description: 'Silakan checkout atau kosongkan keranjang terlebih dahulu'
+            }
+          )
+          return prev
+        }
+      }
+      
       // Check if item already in cart
       const existing = prev.find(i => i.id === item.id)
       
