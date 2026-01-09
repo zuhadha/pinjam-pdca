@@ -2,7 +2,7 @@ import { getFeaturedItems } from '@/lib/actions/item-actions'
 import { ItemCard } from '@/components/catalog/item-card'
 
 export async function FeaturedItems() {
-  const items = await getFeaturedItems(6)
+  const items = await getFeaturedItems(3)
 
   if (items.length === 0) {
     return (
