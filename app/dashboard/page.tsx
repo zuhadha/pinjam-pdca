@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const borrowRequests = await getUserBorrowRequests(user.id)
 
   // Count stats
-  const activeBorrows = borrowRequests.filter(r => r.status === 'approved' || r.status === 'borrowed').length
+  const activeBorrows = borrowRequests.filter(r => r.status === 'borrowed' && !r.return_verified_at).length
   const awaitingVerification = borrowRequests.filter(r => r.return_declared_at && !r.return_verified_at).length
   
   // Calculate overdue (borrowed items past end_datetime)
@@ -135,12 +135,11 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Info Card */}
-        <div className="mt-8 bg-primary-50 border border-primary-200 rounded-lg p-6">
+        <div className="mt-8 bg-blue-50 border border-primary-200 rounded-lg p-6">
           <h3 className="font-semibold text-primary-900 mb-2">ℹ️ Informasi</h3>
           <ul className="text-sm text-primary-800 space-y-2">
-            <li>• Pastikan mengembalikan barang sesuai tanggal yang telah ditentukan</li>
-            <li>• Untuk barang sensitif, pengajuan memerlukan persetujuan admin</li>
-            <li>• Laporkan segera jika ada kerusakan atau kehilangan barang</li>
+            <li>Pastikan mengembalikan barang sesuai tanggal yang telah ditentukan</li>
+            <li>Laporkan segera jika ada kerusakan atau kehilangan barang</li>
           </ul>
         </div>
       </div>
