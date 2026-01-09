@@ -23,18 +23,17 @@ export default async function EditItemPage({ params }: EditItemPageProps) {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-full space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/admin/items">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Edit Barang</h1>
-          <p className="text-gray-600 mt-2">{item.name}</p>
+          {/* <p className="text-gray-600 mt-2">{item.name}</p> */}
         </div>
       </div>
 

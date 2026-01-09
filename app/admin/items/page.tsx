@@ -1,26 +1,12 @@
 import { getAllItems } from '@/lib/actions/item-management-actions'
-import { getCategories } from '@/lib/actions/item-actions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ItemsTable } from '@/components/admin/items-table'
-import { ItemFilters } from '@/components/admin/item-filters'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 
-interface ItemsPageProps {
-  searchParams: Promise<{
-    search?: string
-    category?: string
-  }>
-}
-
-export default async function ItemsPage({ searchParams }: ItemsPageProps) {
-  const params = await searchParams
-  const items = await getAllItems({
-    search: params.search,
-    categoryId: params.category,
-  })
-  const categories = await getCategories()
+export default async function ItemsPage() {
+  const items = await getAllItems({})
 
   return (
     <div className="space-y-6">
@@ -38,15 +24,12 @@ export default async function ItemsPage({ searchParams }: ItemsPageProps) {
         </Link>
       </div>
 
-      {/* Filters */}
-      <ItemFilters categories={categories} />
-
-      {/* Items Table */}
+      {/* Items Table with integrated filters */}
       <Card>
         <CardHeader>
           <CardTitle>Daftar Barang</CardTitle>
           <CardDescription>
-            Menampilkan {items.length} barang
+            Kelola semua barang dengan filter dan pencarian
           </CardDescription>
         </CardHeader>
         <CardContent>
