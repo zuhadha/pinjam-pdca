@@ -90,7 +90,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Recent Requests */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -158,7 +158,7 @@ export default async function AdminDashboardPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   )
 }

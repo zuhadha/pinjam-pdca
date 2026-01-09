@@ -23,7 +23,7 @@ export default async function PermanentRequestsPage({ searchParams }: PermanentR
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Kelola Permintaan Barang</h1>
-        <p className="text-gray-600 mt-2">Kelola permintaan barang (tidak dikembalikan)</p>
+        <p className="text-gray-600 mt-2">Kelola permintaan barang</p>
       </div>
 
       {/* Filters */}
@@ -35,7 +35,7 @@ export default async function PermanentRequestsPage({ searchParams }: PermanentR
           <CardTitle>Daftar Permintaan Barang</CardTitle>
         </CardHeader>
         <CardContent>
-          <RequestsTable requests={requests} />
+          <RequestsTable requests={requests} isPermanentView={true} />
         </CardContent>
       </Card>
     </div>

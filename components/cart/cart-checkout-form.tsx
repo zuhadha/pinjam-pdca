@@ -94,8 +94,8 @@ export function CartCheckoutForm() {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Borrowing Type */}
-        <div>
-          <Label className="mb-3">Jenis Peminjaman</Label>
+        <div className='flex flex-col gap-y-2'>
+          <Label>Jenis Peminjaman</Label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -129,7 +129,7 @@ export function CartCheckoutForm() {
         {/* Date/Time Fields */}
         {borrowingType === 'same-day' ? (
           <div className="space-y-4">
-            <div>
+            <div className='flex flex-col gap-y-2'>
               <Label htmlFor="date">Tanggal Peminjaman *</Label>
               <Input
                 id="date"
@@ -141,7 +141,7 @@ export function CartCheckoutForm() {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-y-2'>
                 <Label htmlFor="start-time">Waktu Mulai *</Label>
                 <Input
                   id="start-time"
@@ -151,7 +151,7 @@ export function CartCheckoutForm() {
                   required
                 />
               </div>
-              <div>
+              <div className='flex flex-col gap-y-2'>
                 <Label htmlFor="end-time">Waktu Selesai *</Label>
                 <Input
                   id="end-time"
@@ -192,7 +192,7 @@ export function CartCheckoutForm() {
 
         {/* Usage Location */}
         <div>
-          <Label htmlFor="location" className="flex items-center gap-2">
+          <Label htmlFor="location" className="flex items-center gap-2 mb-2">
             <MapPin className="h-4 w-4" />
             Lokasi Penggunaan *
           </Label>
@@ -206,7 +206,7 @@ export function CartCheckoutForm() {
         </div>
 
         {/* Purpose */}
-        <div>
+        <div className='flex flex-col gap-y-2'>
           <Label htmlFor="purpose">Tujuan Peminjaman *</Label>
           <Input
             id="purpose"
@@ -218,7 +218,7 @@ export function CartCheckoutForm() {
         </div>
 
         {/* Notes */}
-        <div>
+        <div className='flex flex-col gap-y-2'>
           <Label htmlFor="notes">Catatan Tambahan</Label>
           <Textarea
             id="notes"

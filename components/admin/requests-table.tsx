@@ -37,9 +37,10 @@ import { Pagination } from '@/components/ui/pagination'
 
 interface RequestsTableProps {
   requests: any[]
+  isPermanentView?: boolean // Hide Durasi, Status, Aksi for permanent requests
 }
 
-export function RequestsTable({ requests }: RequestsTableProps) {
+export function RequestsTable({ requests, isPermanentView = false }: RequestsTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -120,20 +121,18 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     }
 
     switch (request.status) {
-      case 'pending':
-        return <Badge variant="warning">⏳ Pending</Badge>
       case 'approved':
-        return <Badge variant="success">✓ Approved</Badge>
+        return <Badge variant="success">Approved</Badge>
       case 'borrowed':
         return request.is_permanent ? (
-          <Badge variant="default">📦 Taken</Badge>
+          <div></div>
         ) : (
-          <Badge variant="success">📦 Dipinjam</Badge>
+          <Badge variant="success">Dipinjam</Badge>
         )
       case 'rejected':
-        return <Badge variant="destructive">✗ Ditolak</Badge>
+        return <Badge variant="destructive">Ditolak</Badge>
       case 'returned':
-        return <Badge variant="gray">✓ Dikembalikan</Badge>
+        return <Badge variant="gray">Dikembalikan</Badge>
       default:
         return <Badge variant="gray">{request.status}</Badge>
     }
@@ -147,7 +146,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
           placeholder="Cari user, barang, atau keperluan..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="sm:max-w-xs"
+          className="h-auto leading-none text-sm sm:max-w-xs"
         />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="sm:w-[200px]">
@@ -158,8 +157,6 @@ export function RequestsTable({ requests }: RequestsTableProps) {
             <SelectItem value="borrowed">Sedang Dipinjam</SelectItem>
             <SelectItem value="verification">Perlu Verifikasi</SelectItem>
             <SelectItem value="returned">Dikembalikan</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="rejected">Ditolak</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -173,9 +170,9 @@ export function RequestsTable({ requests }: RequestsTableProps) {
               <TableHead className="w-[150px]">User</TableHead>
               <TableHead className="w-[180px]">Barang</TableHead>
               <TableHead className="w-[160px]">Keperluan</TableHead>
-              <TableHead className="w-[140px]">Durasi</TableHead>
-              <TableHead className="w-[160px]">Status</TableHead>
-              <TableHead className="w-[100px] text-right">Aksi</TableHead>
+              {!isPermanentView && <TableHead className="w-[140px]">Durasi</TableHead>}
+              {!isPermanentView && <TableHead className="w-[160px]">Status</TableHead>}
+              {!isPermanentView && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,41 +214,47 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                     <TableCell className="max-w-[160px] truncate text-sm">
                       {request.purpose}
                     </TableCell>
-                    <TableCell>
-                      {request.is_permanent ? (
-                        <Badge variant="secondary">Permanent</Badge>
-                      ) : request.is_same_day ? (
-                        <span className="text-sm">
-                          {format(new Date(request.start_datetime), 'HH:mm')} - {format(new Date(request.end_datetime), 'HH:mm')}
-                        </span>
-                      ) : (
-                        <span className="text-sm">
-                          {format(new Date(request.start_datetime), 'dd MMM')} - {format(new Date(request.end_datetime), 'dd MMM')}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {getStatusBadge(request)}
-                        {request.is_permanent && (
+                    {!isPermanentView && (
+                      <TableCell>
+                        {request.is_permanent ? (
                           <Badge variant="secondary">Permanent</Badge>
+                        ) : request.is_same_day ? (
+                          <span className="text-sm">
+                            {format(new Date(request.start_datetime), 'HH:mm')} - {format(new Date(request.end_datetime), 'HH:mm')}
+                          </span>
+                        ) : (
+                          <span className="text-sm">
+                            {format(new Date(request.start_datetime), 'dd MMM')} - {format(new Date(request.end_datetime), 'dd MMM')}
+                          </span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {needsVerification && (
-                        <Button
-                          onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
-                          variant="primary"
-                          size="sm"
-                          disabled={actionLoading === request.id}
-                          className="h-6 w-12 p-0"
-                          title="Verifikasi Pengembalian"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {!isPermanentView && (
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {getStatusBadge(request)}
+                          {request.is_permanent && (
+                            <Badge variant="secondary">Permanent</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {!isPermanentView && (
+                      <TableCell className="text-right">
+                        {needsVerification && (
+                          <Button
+                            onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
+                            variant="primary"
+                            size="sm"
+                            disabled={actionLoading === request.id}
+                            className="h-6 w-12 p-0"
+                            title="Verifikasi Pengembalian"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 )
               })
