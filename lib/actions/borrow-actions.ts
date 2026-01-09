@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getCurrentUser } from '@/lib/auth/actions'
 import { revalidatePath } from 'next/cache'
 
@@ -149,16 +150,26 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       return { error: 'Failed to add items to request' }
     }
 
-    // Update stock immediately (all items are borrowed)
+    // Update stock immediately (all items are borrowed/requested)
+    // Use service role client to bypass RLS policies on items table
+    const serviceClient = createServiceRoleClient()
+
     for (const requestItem of input.items) {
       const item = items?.find(i => i.id === requestItem.itemId)
       if (item) {
-        await supabase
+        const newStock = item.stock_available - requestItem.quantity
+
+        const { error: stockError } = await serviceClient
           .from('items')
           .update({
-            stock_available: item.stock_available - requestItem.quantity
+            stock_available: newStock
           })
           .eq('id', item.id)
+
+        if (stockError) {
+          console.error('Failed to update stock for item:', item.id, stockError)
+          // Note: Not rolling back the request, but logging the error
+        }
       }
     }
 
