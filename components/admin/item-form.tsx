@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import * as LucideIcons from 'lucide-react'
+import { PlusCircle, MinusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ItemFormProps {
@@ -34,10 +36,26 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
     name: initialData?.name || '',
     description: initialData?.description || '',
     category_id: initialData?.category_id || '',
-    stock_total: initialData?.stock_total || 0,
     location: initialData?.location || '',
-    is_borrowable: initialData?.is_borrowable ?? true, // Default to borrowable
+    is_borrowable: initialData?.is_borrowable ?? true,
+    units: initialData?.units || [],
+    stock_quantity: initialData?.stock_total || 0, // Only used when is_borrowable = false
   })
+
+  // Unit array handlers
+  const addUnit = () => {
+    setFormData({ ...formData, units: [...formData.units, { code: '' }] })
+  }
+
+  const removeUnit = (index: number) => {
+    setFormData({ ...formData, units: formData.units.filter((_, i) => i !== index) })
+  }
+
+  const handleUnitChange = (index: number, code: string) => {
+    const newUnits = [...formData.units]
+    newUnits[index].code = code
+    setFormData({ ...formData, units: newUnits })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,10 +75,20 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
       return
     }
 
-    if (formData.stock_total < 0) {
-      setError('Stok total tidak boleh negatif')
-      setLoading(false)
-      return
+    // Only validate units for borrowable items
+    if (formData.is_borrowable) {
+      if (formData.units.some((u: any) => !u.code.trim())) {
+        setError('Kode unit tidak boleh kosong')
+        setLoading(false)
+        return
+      }
+
+      const codes = formData.units.map((u: any) => u.code.trim().toLowerCase())
+      if (new Set(codes).size !== codes.length) {
+        setError('Ada duplikasi kode pada tabel ini. Pastikan semua kode unik.')
+        setLoading(false)
+        return
+      }
     }
 
     const result = mode === 'create'
@@ -116,32 +144,92 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
                 <SelectValue placeholder="Pilih kategori..." />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
-                  </SelectItem>
-                ))}
+                {categories.map((cat) => {
+                  const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+                  return (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        {IconComp ? <IconComp className="h-4 w-4" /> : <span>{cat.icon}</span>}
+                        <span>{cat.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Stock */}
-          <div>
-            <Label htmlFor="stock_total">Stok Total *</Label>
-            <Input
-              id="stock_total"
-              type="number"
-              min="0"
-              value={formData.stock_total}
-              onChange={(e) => setFormData({ ...formData, stock_total: parseInt(e.target.value) || 0 })}
-              required
-            />
-            {mode === 'edit' && initialData && (
-              <p className="text-sm text-gray-600 mt-1">
-                Stok tersedia saat ini: {initialData.stock_available}
+          {/* Stock Section — conditional on item type */}
+          {formData.is_borrowable ? (
+            // Borrowable: Unit Code manager
+            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-base">Kode Unit Barang *</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addUnit} className="h-8 gap-1">
+                  <PlusCircle className="h-4 w-4" />
+                  Tambah Unit
+                </Button>
+              </div>
+              
+              {formData.units.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-4 bg-white border border-gray-200 rounded-md">
+                  Belum ada unit. Tambahkan unit agar barang dapat dipinjam.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {formData.units.map((unit: any, index: number) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        value={unit.code}
+                        onChange={(e) => handleUnitChange(index, e.target.value)}
+                        placeholder={`Kode unit unik (contoh: ${formData.name.split(' ')[0].toLowerCase().substring(0,3)}${String(index+1).padStart(3, '0')})`}
+                        required
+                        className="bg-white"
+                      />
+                      {unit.is_available === false && unit.id && (
+                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded whitespace-nowrap">
+                          Sedang Dipinjam
+                        </span>
+                      )}
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={() => removeUnit(index)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 h-auto"
+                        title="Hapus unit ini"
+                      >
+                        <MinusCircle className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {mode === 'edit' && initialData && (
+                <p className="text-sm text-gray-600 mt-3 pt-3 border-t border-gray-200">
+                  Stok tersedia (tidak dipinjam) saat ini: {initialData.stock_available} / {formData.units.length}
+                </p>
+              )}
+            </div>
+          ) : (
+            // Non-borrowable: Simple quantity input
+            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+              <Label className="text-base mb-3 block">Jumlah Stok *</Label>
+              <p className="text-sm text-gray-500 mb-3">
+                Barang permintaan menggunakan stok angka — tidak memerlukan kode unit per barang.
               </p>
-            )}
-          </div>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.stock_quantity}
+                  onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
+                  className="bg-white w-32"
+                />
+                <span className="text-sm text-gray-500">unit tersedia</span>
+              </div>
+            </div>
+          )}
 
           {/* Location */}
           <div>

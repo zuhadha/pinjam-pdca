@@ -45,7 +45,8 @@ export async function getItems(filters?: {
     .select(`
       *,
       category:categories(id, name, icon),
-      images:item_images(id, image_url, display_order)
+      images:item_images(id, image_url, display_order),
+      units:item_units(id, code, is_available, condition)
     `)
     .order('stock_available', { ascending: false }) // Items with stock first
     .order('name', { ascending: true }) // Then alphabetically
@@ -97,7 +98,8 @@ export async function getItemById(id: string) {
     .select(`
       *,
       category:categories(id, name, icon),
-      images:item_images(id, image_url, display_order)
+      images:item_images(id, image_url, display_order),
+      units:item_units(id, code, is_available, condition)
     `)
     .eq('id', id)
     .order('display_order', { foreignTable: 'item_images', ascending: true })

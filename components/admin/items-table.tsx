@@ -176,9 +176,6 @@ export function ItemsTable({ items }: ItemsTableProps) {
                     Stok
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
@@ -233,11 +230,6 @@ export function ItemsTable({ items }: ItemsTableProps) {
                             <span className="text-xs text-yellow-600">Rendah</span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={item.is_active ? 'success' : 'secondary'}>
-                          {item.is_active ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
