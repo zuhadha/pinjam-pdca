@@ -56,9 +56,9 @@ export function ImageCropModal({ isOpen, imageFile, onCropComplete, onCancel }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-full overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
           <h3 className="text-lg font-semibold text-gray-900">Crop Gambar ke Persegi</h3>
           <button
             onClick={onCancel}
@@ -70,7 +70,7 @@ export function ImageCropModal({ isOpen, imageFile, onCropComplete, onCancel }: 
         </div>
 
         {/* Crop Area */}
-        <div className="relative flex-1 bg-gray-900" style={{ minHeight: '400px' }}>
+        <div className="relative flex-shrink-0 bg-gray-900 h-[300px] sm:h-[400px]">
           <Cropper
             image={imageUrl}
             crop={crop}
