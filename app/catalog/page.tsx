@@ -7,6 +7,7 @@ interface CatalogPageProps {
     search?: string
     category?: string
     available?: string
+    type?: string
   }>
 }
 
@@ -17,6 +18,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
     search: params.search,
     categoryId: params.category,
     availableOnly: params.available === 'true',
+    isBorrowable: params.type === 'pinjam' ? true : params.type === 'minta' ? false : undefined,
   })
 
   return (

@@ -43,6 +43,7 @@ export async function getItems(filters?: {
   search?: string
   categoryId?: string
   availableOnly?: boolean
+  isBorrowable?: boolean
 }) {
   const supabase = await createClient()
 
@@ -68,6 +69,10 @@ export async function getItems(filters?: {
 
   if (filters?.availableOnly) {
     query = query.gt('stock_available', 0)
+  }
+
+  if (filters?.isBorrowable !== undefined) {
+    query = query.eq('is_borrowable', filters.isBorrowable)
   }
 
   const { data, error } = await query

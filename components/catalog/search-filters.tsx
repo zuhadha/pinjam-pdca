@@ -28,13 +28,15 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '')
   const [availableOnly, setAvailableOnly] = useState(searchParams.get('available') === 'true')
+  const [borrowType, setBorrowType] = useState(searchParams.get('type') || 'all')
 
-  const applyFilters = (newSearch: string, newCategoryId: string, newAvailableOnly: boolean) => {
+  const applyFilters = (newSearch: string, newCategoryId: string, newAvailableOnly: boolean, newType: string) => {
     const params = new URLSearchParams()
     
     if (newSearch) params.set('search', newSearch)
     if (newCategoryId) params.set('category', newCategoryId)
     if (newAvailableOnly) params.set('available', 'true')
+    if (newType !== 'all') params.set('type', newType)
 
     startTransition(() => {
       router.push(`/catalog?${params.toString()}`)
@@ -43,25 +45,31 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    applyFilters(value, categoryId, availableOnly)
+    applyFilters(value, categoryId, availableOnly, borrowType)
   }
 
   const handleCategoryChange = (value: string) => {
     const newValue = value === 'all' ? '' : value
     setCategoryId(newValue)
-    applyFilters(search, newValue, availableOnly)
+    applyFilters(search, newValue, availableOnly, borrowType)
   }
 
   const handleAvailableToggle = () => {
     const newValue = !availableOnly
     setAvailableOnly(newValue)
-    applyFilters(search, categoryId, newValue)
+    applyFilters(search, categoryId, newValue, borrowType)
+  }
+
+  const handleTypeChange = (value: string) => {
+    setBorrowType(value)
+    applyFilters(search, categoryId, availableOnly, value)
   }
 
   const resetFilters = () => {
     setSearch('')
     setCategoryId('')
     setAvailableOnly(false)
+    setBorrowType('all')
     startTransition(() => {
       router.push('/catalog')
     })
@@ -70,7 +78,7 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
   const { items: cartItems, openCart } = useCart()
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
-  const hasActiveFilters = search || categoryId || availableOnly
+  const hasActiveFilters = search || categoryId || availableOnly || borrowType !== 'all'
 
   return (
     <div className="mb-6">
@@ -201,6 +209,23 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
                     </SelectItem>
                   )
                 })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Type Dropdown (Pinjam/Minta) */}
+          <div className="w-40">
+            <Select
+              value={borrowType}
+              onValueChange={handleTypeChange}
+            >
+              <SelectTrigger className="focus:ring-primary-600">
+                <SelectValue placeholder="Semua Tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tipe</SelectItem>
+                <SelectItem value="pinjam">Peminjaman</SelectItem>
+                <SelectItem value="minta">Permintaan</SelectItem>
               </SelectContent>
             </Select>
           </div>
