@@ -1,15 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
 import type { Item } from '@/lib/actions/item-actions'
 import { Badge } from '@/components/ui/badge'
 import { BorrowModal } from '@/components/borrow/borrow-modal'
-import { MagicBento } from '@/components/ui/magic-bento'
+import { ItemDetailContext, useItemDetail } from './item-detail-context'
 import { ImageCarousel } from './image-carousel'
 import { useCart } from '@/components/cart/cart-context'
 import { Button } from '@/components/ui/button'
-import { ShoppingCart, Package2 } from 'lucide-react'
+import { ShoppingCart, Package2, MapPin } from 'lucide-react'
 
 interface ItemCardProps {
   item: Item
@@ -18,30 +17,36 @@ interface ItemCardProps {
 
 export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
   const isAvailable = item.stock_available > 0
-  const [showModal, setShowModal] = useState(false)
+  const [showBorrowModal, setShowBorrowModal] = useState(false)
+  const { openItem } = useItemDetail()
   const { addItem, isInCart } = useCart()
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     addItem({
       id: item.id,
       name: item.name,
       quantity: 1,
       stock_available: item.stock_available,
       images: item.images || [],
-      is_borrowable: item.is_borrowable ?? true, // Default to borrowable if not set
+      availableUnits: item.units?.filter((u: any) => u.is_available) || [],
+      selectedUnits: [],
+      is_borrowable: item.is_borrowable ?? true,
     })
   }
 
   return (
     <>
-      <MagicBento className="rounded-lg p-[4px]">
-        <Link href={`/catalog/${item.id}`} className="block">
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow h-full cursor-pointer">
+      <div
+        className="h-full flex flex-col rounded-lg border border-gray-200 bg-white hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+        onClick={() => openItem(item)}
+      >
         {/* Item Image */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <ImageCarousel
             images={item.images || []}
-            imageClassName="h-48"
+            imageClassName="h-32 sm:h-48"
           />
           {!isAvailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -53,78 +58,68 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
         </div>
 
         {/* Item Info */}
-        <div className="p-5">
-          {/* Category and Status Badges */}
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <div className="flex-1 flex flex-col p-3 sm:p-4">
+          {/* Badges */}
+          <div className="flex items-center gap-1 sm:gap-2 mb-1.5 flex-wrap flex-shrink-0">
             {item.category && (
-              <Badge variant="default" className="flex items-center gap-1">
-                {/* <span>{item.category.icon}</span> */}
+              <Badge variant="default" className="text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0 sm:py-0.5">
                 {item.category.name}
               </Badge>
             )}
-            <Badge variant={isAvailable ? 'success' : 'destructive'}>
-              {isAvailable ? 'Tersedia' : 'Tidak Tersedia'}
+            <Badge variant={isAvailable ? 'success' : 'destructive'} className="text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0 sm:py-0.5">
+              {isAvailable ? 'Tersedia' : 'Habis'}
             </Badge>
           </div>
 
           {/* Item Name */}
-          <h3 className="font-semibold text-lg text-gray-900 line-clamp-2">
+          <h3 className="font-semibold text-sm sm:text-base text-gray-900 line-clamp-2 leading-tight mb-2">
             {item.name}
           </h3>
 
-          {/* Description */}
-          {item.description && (
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-              {item.description}
-            </p>
-          )}
-
-          {/* Stock Info */}
-          <div className="flex items-center justify-between mb-4 text-sm gap-x-2">
-            <div className="text-gray-500 px-3 py-1.5 bg-gray-100 rounded-md flex items-center leading-none border border-gray-200">
-              <Package2 className="h-4 w-4 mr-1" />
+          {/* Stock & Location — always in one row, items aligned */}
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded border border-gray-200 whitespace-nowrap">
+              <Package2 className="h-3 w-3 flex-shrink-0" />
               {item.is_borrowable ? (
-                // Borrowable items: show available/total
-                <><strong className="text-gray-900 mr-1 leading-none">{item.stock_available}</strong> /{item.stock_total}</>
+                <><strong className="text-gray-900">{item.stock_available}</strong>/{item.stock_total}</>
               ) : (
-                // Requestable items: show only available count  
-                <>Stok: <strong className="text-gray-900 ml-1 leading-none">{item.stock_available}</strong></>
+                <>Stok: <strong className="text-gray-900 ml-0.5">{item.stock_available}</strong></>
               )}
             </div>
             {item.location && (
-              <div className="text-gray-500 text-sm leading-none px-3 py-1.5 bg-gray-100 rounded-md flex-1 border border-gray-200 truncate">
-                📍 {item.location}
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded border border-gray-200 min-w-0">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{item.location}</span>
               </div>
             )}
           </div>
 
           {/* Action Buttons */}
           {showBorrowButton && (
-            <div className="space-y-2">
+            <div className="mt-auto pt-1">
               {isAvailable ? (
-                <>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModal(true); }}
-                      className="flex-1 py-auto bg-primary-600 text-white rounded-md font-medium hover:bg-primary-700 transition-colors"
-                    >
-                      {item.is_borrowable ? 'Pinjam' : 'Minta'}
-                    </button>
-                    <Button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(); }}
-                      variant="outline"
-                      size="sm"
-                      className="px-3"
-                      title={isInCart(item.id) ? "Sudah di keranjang" : "Tambah ke keranjang"}
-                    >
-                      <ShoppingCart className={`h-4 w-4 ${isInCart(item.id) ? 'fill-primary-600' : ''}`} />
-                    </Button>
-                  </div>
-                </>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowBorrowModal(true) }}
+                    className="flex-1 py-1 sm:py-1.5 bg-primary-600 text-white rounded text-xs sm:text-sm font-medium hover:bg-primary-700 transition-colors"
+                  >
+                    {item.is_borrowable ? 'Pinjam' : 'Ambil'}
+                  </button>
+                  <Button
+                    onClick={handleAddToCart}
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    title={isInCart(item.id) ? 'Sudah di keranjang' : 'Tambah ke keranjang'}
+                  >
+                    <ShoppingCart className={`h-4 w-4 ${isInCart(item.id) ? 'fill-primary-600 text-primary-600' : ''}`} />
+                  </Button>
+                </div>
               ) : (
-                <button 
-                  disabled 
-                  className="w-full py-1.5 bg-gray-300 text-gray-500 rounded-md font-medium cursor-not-allowed"
+                <button
+                  disabled
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full py-1.5 bg-gray-100 text-gray-400 rounded text-xs sm:text-sm font-medium cursor-not-allowed border border-gray-200"
                 >
                   Stok Habis
                 </button>
@@ -133,11 +128,9 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
           )}
         </div>
       </div>
-      </Link>
-      </MagicBento>
 
       {/* Borrow Modal */}
-      {showModal && (
+      {showBorrowModal && (
         <BorrowModal
           initialItems={[{
             id: item.id,
@@ -145,7 +138,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
             stock_available: item.stock_available,
             is_borrowable: item.is_borrowable,
           }]}
-          onClose={() => setShowModal(false)}
+          onClose={() => setShowBorrowModal(false)}
         />
       )}
     </>

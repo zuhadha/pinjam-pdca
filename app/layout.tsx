@@ -3,10 +3,11 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/components/cart/cart-context";
+import { ItemDetailProvider } from "@/components/catalog/item-detail-context";
 
 export const metadata: Metadata = {
-  title: "Sistem Peminjaman Barang - Garuda Food",
-  description: "Aplikasi peminjaman barang internal kantor Garuda Food",
+  title: "INVENSA — Sistem Inventaris & Peminjaman Barang",
+  description: "Aplikasi manajemen inventaris dan peminjaman barang internal",
 };
 
 export default function RootLayout({
@@ -18,9 +19,11 @@ export default function RootLayout({
     <html lang="id">
       <body className="antialiased">
         <CartProvider>
-          <Navbar />
-          {children}
-          <Toaster />
+          <ItemDetailProvider>
+            <Navbar />
+            {children}
+            <Toaster />
+          </ItemDetailProvider>
         </CartProvider>
       </body>
     </html>
