@@ -48,25 +48,29 @@ export function Navbar() {
 
   if (user) {
     if (user.role === 'admin') {
-      navLinks.pop(),
       navLinks.push({ href: '/admin', label: 'Admin' })
     } else {
       navLinks.push({ href: '/dashboard', label: 'Dashboard' })
     }
   }
 
+  const isCatalogPage = pathname.startsWith('/catalog')
+  const isLoginPage = pathname === '/login'
+
+  if (isLoginPage) return null
+
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <nav className={`sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm ${isCatalogPage ? 'hidden lg:block' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
             <Image
-              src="/logo.png"
-              alt="Logo"
-              width={125}
-              height={60}
-              className="object-contain"
+              src="/logo-invensa.jpeg"
+              alt="INVENSA"
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain"
               priority
             />
           </Link>

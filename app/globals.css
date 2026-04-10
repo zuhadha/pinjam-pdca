@@ -83,4 +83,8 @@
   .focus\:border-primary-600:focus { border-color: rgb(37 99 235); }
   .focus\:ring-primary-600:focus { --tw-ring-color: rgb(37 99 235); }
   .focus-visible\:ring-primary-600:focus-visible { --tw-ring-color: rgb(37 99 235); }
+
+  /* Hide scrollbar utility */
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }

@@ -26,99 +26,107 @@ export default function LoginPage() {
       
       if (result.error) {
         setError(result.error)
+        setLoading(false)
+      } else if (result.success) {
+        router.push('/admin')
       }
-      // Success will redirect automatically via loginAction
     } catch (err) {
       setError('Terjadi kesalahan. Silakan coba lagi.')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 p-4">
-      <div className="w-full max-w-md">
+    <div className="h-screen w-screen flex items-center justify-center bg-gray-900 overflow-hidden relative">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/bg-login.webp"
+          alt="Background"
+          fill
+          className="object-cover blur-[8px] scale-105 opacity-60"
+          priority
+        />
+        <div className="absolute inset-0 bg-black/20" /> {/* subtle overlay */}
+      </div>
+
+      <div className="w-full max-w-sm px-8 py-10 rounded-3xl bg-white backdrop-blur-xl shadow-2xl z-10 mx-4 border border-white/20">
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
-            src="/logo.png"
-            alt="Logo"
-            width={250}
-            height={120}
-            className="object-contain"
+            src="/logo-invensa.jpeg"
+            alt="INVENSA Logo"
+            width={220}
+            height={80}
+            className="h-20 w-auto object-contain mix-blend-multiply"
             priority
           />
         </div>
 
-        <Card className="border-2 shadow-lg">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-center text-3xl">Login</CardTitle>
-            <CardDescription className="text-center text-base">
-              Masukkan username dan password Anda
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Masukkan username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  disabled={loading}
-                  autoComplete="username"
-                />
-              </div>
+        <div className="space-y-6">
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Selamat Datang</h1>
+            <p className="text-sm text-gray-600">Sistem Inventaris Barang Internal</p>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  autoComplete="current-password"
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <Input
+                id="username"
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
                 disabled={loading}
-              >
-                {loading ? 'Memproses...' : 'Login'}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => router.push('/')}
-                className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-              >
-                ← Kembali ke Beranda
-              </button>
+                autoComplete="username"
+                className="h-12 bg-white/50 border-gray-200 focus:ring-2 focus:ring-primary-600 transition-all text-base rounded-xl"
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Helper text */}
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Login menggunakan akun yang didaftarkan oleh admin.</p>
-          <p className="mt-1 text-xs">Default password: <code className="bg-gray-100 px-2 py-1 rounded">nik123</code></p>
+            <div className="space-y-1">
+              <Input
+                id="password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                autoComplete="current-password"
+                className="h-12 bg-white/50 border-gray-200 focus:ring-2 focus:ring-primary-600 transition-all text-base rounded-xl"
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-500 text-xs text-center font-semibold bg-red-50 py-2 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full h-12 text-base font-bold shadow-lg rounded-xl transition-transform active:scale-95"
+              disabled={loading}
+            >
+              {loading ? 'Masuk...' : 'Login Admin'}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <button
+              onClick={() => router.push('/')}
+              className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              ← Kembali ke Beranda
+            </button>
+          </div>
         </div>
+
+        <p className="mt-12 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+          INVENSA &copy; 2025
+        </p>
       </div>
     </div>
   )

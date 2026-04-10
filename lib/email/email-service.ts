@@ -1,11 +1,21 @@
 'use server'
 
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { render } from '@react-email/components'
 import OverdueReminderEmail from './templates/overdue-reminder-email'
-import { createClient } from '@/lib/supabase/server'
+import BorrowConfirmationEmail from './templates/borrow-confirmation-email'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Setup Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+})
+
+const FROM_EMAIL = `"INVENSA" <${process.env.EMAIL_USER}>`
 
 export interface BorrowItemData {
   name: string
@@ -29,12 +39,84 @@ export interface SendReminderEmailResult {
 }
 
 /**
- * Send overdue reminder email to user
- * @param userEmail - Recipient email address
- * @param userName - Recipient name
- * @param borrowRequest - Borrow request data
- * @param returnToken - Secure token for return action
- * @returns Result with success status and message ID or error
+ * Reusable function with 2-second delay to avoid Gmail limits
+ */
+async function sendEmailWithDelay(to: string, subject: string, html: string) {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  return transporter.sendMail({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  })
+}
+
+/**
+ * Send borrow confirmation email to borrower when request is created.
+ * Includes a return button that becomes active when they are ready to return.
+ */
+export async function sendBorrowConfirmationEmail(params: {
+  borrowerEmail: string
+  borrowerName: string
+  borrowerDivision: string
+  items: BorrowItemData[]
+  startDatetime: string | null
+  endDatetime: string | null
+  usageLocation: string
+  purpose: string
+  isPermanent: boolean
+  returnToken: string
+}): Promise<SendReminderEmailResult> {
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const returnUrl = `${appUrl}/api/return?token=${params.returnToken}`
+
+    const formatDate = (dt: string | null) => {
+      if (!dt) return '-'
+      return new Date(dt).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }
+
+    const emailHtml = await render(
+      BorrowConfirmationEmail({
+        borrowerName: params.borrowerName,
+        borrowerDivision: params.borrowerDivision,
+        items: params.items,
+        startDate: formatDate(params.startDatetime),
+        endDate: formatDate(params.endDatetime),
+        usageLocation: params.usageLocation,
+        purpose: params.purpose,
+        isPermanent: params.isPermanent,
+        returnUrl,
+      })
+    )
+
+    const subject = params.isPermanent
+      ? `✅ Permintaan Barang Berhasil — ${params.borrowerName}`
+      : `✅ Peminjaman Barang Berhasil — ${params.borrowerName}`
+
+    // Menggunakan fungsi nodemailer + delay khusus pengganti Resend
+    const info = await sendEmailWithDelay(params.borrowerEmail, subject, emailHtml)
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    console.error('Unexpected error sending confirmation email:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Send overdue reminder email to borrower.
+ * Reuses the existing return token created at borrow time.
  */
 export async function sendOverdueReminderEmail(
   userEmail: string,
@@ -43,11 +125,9 @@ export async function sendOverdueReminderEmail(
   returnToken: string
 ): Promise<SendReminderEmailResult> {
   try {
-    // Get app URL from environment
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const returnUrl = `${appUrl}/api/return?token=${returnToken}`
 
-    // Format dates for display
     const startDate = new Date(borrowRequest.startDatetime).toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
@@ -66,7 +146,6 @@ export async function sendOverdueReminderEmail(
       minute: '2-digit',
     })
 
-    // Render email template
     const emailHtml = await render(
       OverdueReminderEmail({
         userName,
@@ -79,26 +158,14 @@ export async function sendOverdueReminderEmail(
       })
     )
 
-    // Send email via Resend
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Resend default email (no domain needed)
-      to: [userEmail],
-      subject: `⚠️ Pengingat: Pengembalian Barang Terlambat ${borrowRequest.daysOverdue} Hari`,
-      html: emailHtml,
-    })
+    const subject = borrowRequest.daysOverdue > 0
+      ? `⚠️ Peringatan: Pengembalian Barang Terlambat ${borrowRequest.daysOverdue} Hari`
+      : `ℹ️ Pengingat: Status Barang Sedang Dipinjam`
 
-    if (error) {
-      console.error('Error sending email via Resend:', error)
-      return {
-        success: false,
-        error: error.message || 'Failed to send email',
-      }
-    }
+    // Menggunakan fungsi nodemailer + delay
+    const info = await sendEmailWithDelay(userEmail, subject, emailHtml)
 
-    return {
-      success: true,
-      messageId: data?.id,
-    }
+    return { success: true, messageId: info.messageId }
   } catch (error) {
     console.error('Unexpected error sending reminder email:', error)
     return {
@@ -110,10 +177,6 @@ export async function sendOverdueReminderEmail(
 
 /**
  * Log reminder email attempt to database
- * @param requestId - Borrow request ID
- * @param emailTo - Recipient email
- * @param status - Email status (sent, failed)
- * @param errorMessage - Optional error message
  */
 export async function logReminderEmail(
   requestId: string,
@@ -121,7 +184,7 @@ export async function logReminderEmail(
   status: 'sent' | 'failed',
   errorMessage?: string
 ) {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { error } = await supabase.from('reminder_logs').insert({
     request_id: requestId,
@@ -137,18 +200,16 @@ export async function logReminderEmail(
 }
 
 /**
- * Create return token for borrow request
- * @param requestId - Borrow request ID
- * @param token - Secure token string
- * @param expiresAt - Token expiration date
- * @returns Success status
+ * Create a reusable return token for a borrow request.
+ * Token is created at borrow time and valid until end_datetime + 30 days.
+ * Token is reusable — clicking multiple times is idempotent.
  */
 export async function createReturnToken(
   requestId: string,
   token: string,
   expiresAt: Date
 ): Promise<boolean> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { error } = await supabase.from('return_tokens').insert({
     request_id: requestId,
@@ -162,4 +223,26 @@ export async function createReturnToken(
   }
 
   return true
+}
+
+/**
+ * Get the existing return token for a borrow request.
+ * Returns null if no token exists.
+ */
+export async function getReturnTokenForRequest(requestId: string): Promise<string | null> {
+  const supabase = createServiceRoleClient()
+
+  const { data, error } = await supabase
+    .from('return_tokens')
+    .select('token')
+    .eq('request_id', requestId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data.token
 }

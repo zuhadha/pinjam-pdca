@@ -39,21 +39,34 @@ export const OverdueReminderEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>Reminder: Pengembalian barang telah terlambat {daysOverdue.toString()} hari</Preview>
+      <Preview>
+        {daysOverdue > 0 
+          ? `Peringatan: Pengembalian barang terlambat ${daysOverdue.toString()} hari` 
+          : `Pengingat: Jangan lupa kembalikan barang tepat waktu`}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header */}
-          <Section style={header}>
-            <Heading style={h1}>⚠️ Pengingat Pengembalian Barang</Heading>
+          <Section style={daysOverdue > 0 ? headerOverdue : headerNormal}>
+            <Heading style={h1}>
+              {daysOverdue > 0 ? '⚠️ Peringatan Terlambat' : 'ℹ️ Pengingat Peminjaman'}
+            </Heading>
           </Section>
 
           {/* Greeting */}
           <Section style={section}>
             <Text style={text}>Halo <strong>{userName}</strong>,</Text>
-            <Text style={text}>
-              Kami ingin mengingatkan bahwa waktu pengembalian barang pinjaman Anda telah{' '}
-              <strong style={warningText}>terlambat {daysOverdue} hari</strong>.
-            </Text>
+            {daysOverdue > 0 ? (
+              <Text style={text}>
+                Kami ingin mengingatkan bahwa waktu pengembalian barang pinjaman Anda telah{' '}
+                <strong style={warningText}>terlambat {daysOverdue} hari</strong>.
+              </Text>
+            ) : (
+              <Text style={text}>
+                Email ini adalah pengingat otomatis bahwa Anda saat ini sedang meminjam barang dari INVENSA yang 
+                jatuh tempo dalam <strong>{Math.abs(daysOverdue)} hari</strong>.
+              </Text>
+            )}
           </Section>
 
           {/* Borrow Details */}
@@ -85,11 +98,13 @@ export const OverdueReminderEmail = ({
           </Section>
 
           {/* Warning Message */}
-          <Section style={warningBox}>
-            <Text style={warningTextBox}>
-              ⚠️ Mohon segera mengembalikan barang yang dipinjam agar tidak mengganggu kebutuhan
-              pengguna lain. Barang yang terlambat dikembalikan dapat mempengaruhi akses peminjaman
-              Anda di masa depan.
+          <Section style={daysOverdue > 0 ? warningBox : infoBox}>
+            <Text style={daysOverdue > 0 ? warningTextBox : infoTextBox}>
+              {daysOverdue > 0 ? 
+                '⚠️ Mohon segera mengembalikan barang yang dipinjam agar tidak mengganggu kebutuhan pengguna lain. Barang yang terlambat dikembalikan dapat mempengaruhi akses peminjaman Anda di masa depan.' 
+              : 
+                'ℹ️ Jangan lupa untuk menekan tombol konfirmasi di bawah ini apabila Anda telah selesai meminjam dan mengembalikan barangnya.'
+              }
             </Text>
           </Section>
 
@@ -114,7 +129,7 @@ export const OverdueReminderEmail = ({
               Jika Anda memiliki pertanyaan atau kendala, silakan hubungi tim admin.
             </Text>
             <Text style={footerText}>
-              Email ini dikirim secara otomatis oleh sistem Peminjaman Barang PDCA.
+              Email ini dikirim secara otomatis oleh sistem <strong>INVENSA</strong>.
             </Text>
           </Section>
         </Container>
@@ -140,9 +155,16 @@ const container = {
   maxWidth: '600px',
 }
 
-const header = {
+const headerOverdue = {
   padding: '32px 24px',
   backgroundColor: '#dc2626',
+  borderRadius: '8px 8px 0 0',
+  textAlign: 'center' as const,
+}
+
+const headerNormal = {
+  padding: '32px 24px',
+  backgroundColor: '#2563eb', // Blue for normal reminder
   borderRadius: '8px 8px 0 0',
   textAlign: 'center' as const,
 }
@@ -220,6 +242,21 @@ const warningText = {
 
 const warningTextBox = {
   color: '#92400e',
+  fontSize: '14px',
+  lineHeight: '20px',
+  margin: '0',
+}
+
+const infoBox = {
+  padding: '20px 24px',
+  margin: '24px',
+  backgroundColor: '#eff6ff',
+  borderRadius: '8px',
+  borderLeft: '4px solid #3b82f6',
+}
+
+const infoTextBox = {
+  color: '#1e3a8a',
   fontSize: '14px',
   lineHeight: '20px',
   margin: '0',

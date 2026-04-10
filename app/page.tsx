@@ -23,8 +23,11 @@ export default async function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 w-full">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              Sistem Peminjaman Barang
+              INVENSA
             </h1>
+            <p className="text-base sm:text-lg text-primary-100 mb-2 font-medium tracking-widest uppercase">
+              Sistem Inventaris & Peminjaman Barang
+            </p>
             <p className="text-xl sm:text-2xl text-primary-100 mb-8 max-w-3xl mx-auto">
               Kelola peminjaman barang kantor dengan mudah, cepat, dan terorganisir
             </p>
@@ -66,8 +69,8 @@ export default async function HomePage() {
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Login Diperlukan</h3>
-                <p className="text-gray-600">Anda harus login terlebih dahulu untuk melakukan peminjaman barang.</p>
+                <h3 className="font-semibold text-gray-900 mb-2">Isi Form Peminjaman</h3>
+                <p className="text-gray-600">Pilih barang dari katalog, klik "Pinjam", lalu isi nama, email, divisi, dan keperluan Anda.</p>
               </div>
             </div>
 
@@ -79,7 +82,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Tentukan Durasi</h3>
-                <p className="text-gray-600">Tentukan tanggal mulai dan tanggal pengembalian saat mengajukan peminjaman.</p>
+                <p className="text-gray-600">Tentukan tanggal mulai dan tanggal pengembalian saat mengajukan peminjaman barang.</p>
               </div>
             </div>
 
@@ -90,8 +93,8 @@ export default async function HomePage() {
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Persetujuan Admin</h3>
-                <p className="text-gray-600">Barang sensitif memerlukan persetujuan admin sebelum dapat dipinjam.</p>
+                <h3 className="font-semibold text-gray-900 mb-2">Ambil Barang</h3>
+                <p className="text-gray-600">Hubungi PIC departemen terkait dan tunjukkan email konfirmasi sebagai bukti pengajuan.</p>
               </div>
             </div>
 
@@ -103,7 +106,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Kembalikan Tepat Waktu</h3>
-                <p className="text-gray-600">Kembalikan barang sesuai dengan tanggal yang telah ditentukan.</p>
+                <p className="text-gray-600">Kembalikan barang sesuai tanggal yang ditentukan dan konfirmasi via link di email.</p>
               </div>
             </div>
 
@@ -115,7 +118,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Jaga Kondisi Barang</h3>
-                <p className="text-gray-600">Pastikan barang dalam kondisi baik saat dipinjam dan dikembalikan.</p>
+                <p className="text-gray-600">Pastikan barang dalam kondisi baik saat dipinjam dan dikembalikan kepada PIC.</p>
               </div>
             </div>
 
@@ -127,7 +130,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Laporkan Kerusakan</h3>
-                <p className="text-gray-600">Segera laporkan kepada admin jika terjadi kerusakan atau kehilangan.</p>
+                <p className="text-gray-600">Segera laporkan kepada admin jika terjadi kerusakan atau kehilangan barang yang dipinjam.</p>
               </div>
             </div>
           </div>
@@ -251,7 +254,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-400 mb-4">
-              © Made with ❤️ by PDCA BUE.
+              © 2025 <strong>INVENSA</strong>. Dibuat dengan ❤️ oleh Tim PDCA BUE.
             </p>
             <p className="text-sm text-gray-500">
               Kelola peminjaman barang kantor dengan mudah dan terorganisir
