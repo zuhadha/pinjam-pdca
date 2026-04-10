@@ -9,7 +9,13 @@ import { createBorrowRequest, type BorrowRequestItem } from '@/lib/actions/borro
 import { toast } from 'sonner'
 
 interface BorrowModalProps {
-  initialItems?: Array<{ id: string; name: string; stock_available: number; is_borrowable: boolean }>
+  initialItems?: Array<{ 
+    id: string; 
+    name: string; 
+    stock_available: number; 
+    is_borrowable: boolean;
+    units?: Array<{ id: string; code: string; is_available: boolean }>
+  }>
   onClose: () => void
 }
 
@@ -158,6 +164,19 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
     )
   }
 
+  const toggleUnit = (itemId: string, unitId: string, unitCode: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.itemId !== itemId) return item
+      
+      // Exclusive selection (Single select as per user request)
+      return {
+        ...item,
+        selectedUnits: [{ id: unitId, code: unitCode }],
+        quantity: 1 // If selecting a unit, quantity is 1
+      }
+    }))
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -181,34 +200,72 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               <h3 className="font-semibold text-gray-900 mb-3">
                 {isBorrowable ? 'Barang yang Dipinjam' : 'Barang yang Diminta'}
               </h3>
-              <div className="space-y-3">
-                {initialItems.map((item) => {
+              <div className="space-y-3">                {initialItems.map((item) => {
                   const selectedItem = items.find(i => i.itemId === item.id)
+                  const availableUnits = item.units?.filter(u => u.is_available) || []
+                  
                   return (
-                    <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-md">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-600">Stok tersedia: {item.stock_available}</p>
+                    <div key={item.id} className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Stok tersedia: {item.stock_available}</p>
+                        </div>
+                        
+                        {/* Quantity Controls - Only show if no units available/provided (consumables) */}
+                        {(!item.is_borrowable || availableUnits.length === 0) && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) - 1)}
+                              className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold"
+                            >
+                              −
+                            </button>
+                            <span className="w-10 text-center font-medium">
+                              {selectedItem?.quantity || 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) + 1)}
+                              className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) - 1)}
-                          className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100"
-                        >
-                          −
-                        </button>
-                        <span className="w-12 text-center font-medium">
-                          {selectedItem?.quantity || 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) + 1)}
-                          className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100"
-                        >
-                          +
-                        </button>
-                      </div>
+
+                      {/* Unit Variations Grid */}
+                      {item.is_borrowable && availableUnits.length > 0 && (
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wider">Pilih Kode Unit:</p>
+                          <div className="grid grid-cols-2 xs:grid-cols-3 gap-2">
+                            {availableUnits.map((unit) => {
+                              const isSelected = selectedItem?.selectedUnits?.some(u => u.id === unit.id)
+                              return (
+                                <button
+                                  key={unit.id}
+                                  type="button"
+                                  onClick={() => toggleUnit(item.id, unit.id, unit.code)}
+                                  className={`
+                                    flex items-center justify-center px-3 py-2.5 rounded border-2 text-sm font-medium transition-all duration-200
+                                    ${isSelected 
+                                      ? 'border-primary-600 bg-primary-50 text-primary-700 ring-2 ring-primary-100' 
+                                      : 'border-white bg-white text-gray-600 hover:border-gray-200'
+                                    }
+                                  `}
+                                >
+                                  {unit.code}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {!selectedItem?.selectedUnits?.length && (
+                            <p className="text-[10px] text-red-500 mt-2 italic">* Silakan pilih salah satu kode unit</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

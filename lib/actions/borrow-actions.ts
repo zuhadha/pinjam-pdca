@@ -102,19 +102,34 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     const itemIds = input.items.map((i) => i.itemId)
     const { data: items, error: itemsError } = await supabase
       .from('items')
-      .select('id, name, stock_available, category:categories(name)')
+      .select(`
+        id, 
+        name, 
+        stock_available, 
+        is_borrowable,
+        category:categories(name),
+        units:item_units(id, is_available)
+      `)
       .in('id', itemIds)
 
     if (itemsError) {
       return { error: 'Gagal mengambil data barang' }
     }
 
-    // Check stock availability
+    // Check stock availability and unit selection
     for (const requestItem of input.items) {
       const item = items?.find((i) => i.id === requestItem.itemId)
       if (!item) {
         return { error: 'Barang tidak ditemukan' }
       }
+      
+      // Validation: Borrowable items with units MUST have selection
+      if (item.is_borrowable && item.units && item.units.length > 0) {
+        if (!requestItem.selectedUnits || requestItem.selectedUnits.length === 0) {
+          return { error: `Silakan pilih kode unit untuk barang: ${item.name}` }
+        }
+      }
+
       if (item.stock_available < requestItem.quantity) {
         return { error: `Stok tidak mencukupi untuk barang: ${item.name}` }
       }

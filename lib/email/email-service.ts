@@ -8,11 +8,23 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 // Setup Nodemailer Transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Use STARTTLS on port 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  family: 4 
+} as any)
+
+// Debug: Check if transporter is ready
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ SMTP Transporter Error:', error)
+  } else {
+    console.log('✅ SMTP Transporter is ready to send emails')
+  }
 })
 
 const FROM_EMAIL = `"INVENSA" <${process.env.EMAIL_USER}>`
@@ -42,13 +54,22 @@ export interface SendReminderEmailResult {
  * Reusable function with 2-second delay to avoid Gmail limits
  */
 async function sendEmailWithDelay(to: string, subject: string, html: string) {
+  console.log(`[Email] Preparing to send to ${to}... (applying 2s delay)`)
   await new Promise(resolve => setTimeout(resolve, 2000))
-  return transporter.sendMail({
-    from: FROM_EMAIL,
-    to,
-    subject,
-    html,
-  })
+  
+  try {
+    const result = await transporter.sendMail({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+    })
+    console.log(`[Email] Successfully sent to ${to}. MessageId: ${result.messageId}`)
+    return result
+  } catch (err) {
+    console.error(`[Email] Failed to send to ${to}:`, err)
+    throw err
+  }
 }
 
 /**
@@ -83,6 +104,12 @@ export async function sendBorrowConfirmationEmail(params: {
       })
     }
 
+    console.log(`[Email] Starting confirmation email process for: ${params.borrowerEmail}`)
+    
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('❌ Missing EMAIL_USER or EMAIL_PASS environment variables')
+    }
+
     const emailHtml = await render(
       BorrowConfirmationEmail({
         borrowerName: params.borrowerName,
@@ -97,16 +124,17 @@ export async function sendBorrowConfirmationEmail(params: {
       })
     )
 
+    console.log('[Email] React-Email rendering: SUCCESS')
+
     const subject = params.isPermanent
       ? `✅ Permintaan Barang Berhasil — ${params.borrowerName}`
       : `✅ Peminjaman Barang Berhasil — ${params.borrowerName}`
 
-    // Menggunakan fungsi nodemailer + delay khusus pengganti Resend
     const info = await sendEmailWithDelay(params.borrowerEmail, subject, emailHtml)
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
-    console.error('Unexpected error sending confirmation email:', error)
+    console.error('❌ Unexpected error in sendBorrowConfirmationEmail:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

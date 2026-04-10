@@ -142,6 +142,7 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
             name: item.name,
             stock_available: item.stock_available,
             is_borrowable: item.is_borrowable,
+            units: item.units,
           }]}
           onClose={() => setShowBorrowModal(false)}
         />
