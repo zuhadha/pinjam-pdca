@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 
 /**
  * Return action endpoint - Process return confirmation from email link
  * GET /api/return?token=xxx
- * Public endpoint (no auth required - user already auto-logged in)
- * Token validates authorization
+ * Public endpoint — no auth required. Token validates authorization.
+ * Token is REUSABLE — clicking multiple times is safe and idempotent.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,12 +16,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/return-error?reason=missing_token', request.url))
     }
 
-    const supabase = await createClient()
+    // Use service role client to bypass RLS (public endpoint)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
 
     // Validate token
     const { data: tokenData, error: tokenError } = await supabase
       .from('return_tokens')
-      .select('id, request_id, used, expires_at')
+      .select('id, request_id, expires_at')
       .eq('token', token)
       .single()
 
@@ -30,12 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/return-error?reason=invalid_token', request.url))
     }
 
-    // Check if token already used
-    if (tokenData.used) {
-      return NextResponse.redirect(new URL('/return-error?reason=token_used', request.url))
-    }
-
-    // Check if token expired
+    // Check if token is expired
     const now = new Date()
     const expiresAt = new Date(tokenData.expires_at)
     if (now > expiresAt) {
@@ -45,7 +44,7 @@ export async function GET(request: NextRequest) {
     // Get borrow request details
     const { data: borrowRequest, error: requestError } = await supabase
       .from('borrow_requests')
-      .select('id, status, user_id')
+      .select('id, status, borrower_name')
       .eq('id', tokenData.request_id)
       .single()
 
@@ -53,51 +52,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/return-error?reason=request_not_found', request.url))
     }
 
-    // Check if already returned
+    // If already returned, show success anyway (idempotent)
     if (borrowRequest.status === 'returned') {
       return NextResponse.redirect(new URL('/return-success?already=true', request.url))
     }
 
-    // Update borrow request status to indicate return declaration
+    // Update return_declared_at (idempotent — safe to call multiple times)
     const { error: updateError } = await supabase
       .from('borrow_requests')
       .update({
         return_declared_at: new Date().toISOString(),
       })
       .eq('id', borrowRequest.id)
+      .is('return_declared_at', null) // Only update if not already declared
 
     if (updateError) {
       console.error('Error updating borrow request:', updateError)
       return NextResponse.redirect(new URL('/return-error?reason=update_failed', request.url))
     }
 
-    // Mark token as used
-    const { error: markUsedError } = await supabase
-      .from('return_tokens')
-      .update({
-        used: true,
-        used_at: new Date().toISOString(),
-      })
-      .eq('id', tokenData.id)
-
-    if (markUsedError) {
-      console.error('Error marking token as used:', markUsedError)
-      // Don't fail the request, just log the error
-    }
-
-    // Create log entry
-    const { error: logError } = await supabase.from('borrow_logs').insert({
+    // Create log entry (changed_by = null since this is a public action)
+    await supabase.from('borrow_logs').insert({
       request_id: borrowRequest.id,
       new_status: 'awaiting_verification',
-      old_status: borrowRequest.status,
-      changed_by: borrowRequest.user_id,
-      notes: 'User declared return via email reminder link',
+      old_status: 'borrowed',
+      changed_by: null,
+      notes: `${borrowRequest.borrower_name} mengkonfirmasi pengembalian via email`,
     })
-
-    if (logError) {
-      console.error('Error creating log:', logError)
-      // Don't fail the request
-    }
 
     // Redirect to success page
     return NextResponse.redirect(new URL('/return-success', request.url))

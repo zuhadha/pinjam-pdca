@@ -1,22 +1,28 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getCurrentUser } from '@/lib/auth/actions'
 import { revalidatePath } from 'next/cache'
+import { sendBorrowConfirmationEmail, createReturnToken } from '@/lib/email/email-service'
+import { generateSecureToken } from '@/lib/utils/token-utils'
 
 export interface BorrowRequestItem {
   itemId: string
   quantity: number
+  selectedUnits?: {id: string, code: string}[]
 }
 
 export interface CreateBorrowRequestInput {
   items: BorrowRequestItem[]
 
+  // Borrower identity (no auth required)
+  borrowerName: string
+  borrowerEmail: string
+  borrowerDivision: string
+
   // Request type flag
   isPermanent: boolean
 
-  // Required for borrowing (isPermanent = false), optional for permanent requests
+  // Required for borrowing (isPermanent = false)
   startDatetime?: string // ISO 8601 datetime string
   endDatetime?: string // ISO 8601 datetime string
 
@@ -27,17 +33,26 @@ export interface CreateBorrowRequestInput {
 }
 
 export async function createBorrowRequest(input: CreateBorrowRequestInput) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
-
-  if (!user) {
-    return {
-      error: 'Anda harus login terlebih dahulu untuk meminjam barang',
-      requiresAuth: true
-    }
-  }
+  // Use service role client to bypass RLS (anonymous requests allowed)
+  const supabase = createServiceRoleClient()
 
   try {
+    // Validate borrower identity
+    if (!input.borrowerName?.trim()) {
+      return { error: 'Nama harus diisi' }
+    }
+    if (!input.borrowerEmail?.trim()) {
+      return { error: 'Email harus diisi' }
+    }
+    // Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(input.borrowerEmail.trim())) {
+      return { error: 'Format email tidak valid' }
+    }
+    if (!input.borrowerDivision?.trim()) {
+      return { error: 'Divisi harus diisi' }
+    }
+
     // Validate usage location
     if (!input.usageLocation || !input.usageLocation.trim()) {
       return { error: 'Lokasi penggunaan harus diisi' }
@@ -68,53 +83,50 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       // Auto-detect if same-day borrowing
       isSameDay = startDatetime.toDateString() === endDatetime.toDateString()
 
-      // Validate based on borrowing type
       if (isSameDay) {
-        // Same-day validation
         const timeDiff = (endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60) // minutes
         if (timeDiff < 30) {
           return { error: 'Durasi peminjaman minimal 30 menit' }
         }
       } else {
-        // Multi-day validation
-        const daysDiff = Math.floor((endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60 * 60 * 24))
+        const daysDiff = Math.floor(
+          (endDatetime.getTime() - startDatetime.getTime()) / (1000 * 60 * 60 * 24)
+        )
         if (daysDiff < 1) {
           return { error: 'Untuk peminjaman multi-hari, durasi minimal 1 hari penuh' }
         }
       }
     }
-    // For permanent requests (isPermanent = true), dates are not required
 
-    // Check if any item is sensitive
-    const itemIds = input.items.map(i => i.itemId)
+    // Fetch items for stock check
+    const itemIds = input.items.map((i) => i.itemId)
     const { data: items, error: itemsError } = await supabase
       .from('items')
-      .select('id, stock_available')
+      .select('id, name, stock_available, category:categories(name)')
       .in('id', itemIds)
 
     if (itemsError) {
-      return { error: 'Failed to fetch items' }
+      return { error: 'Gagal mengambil data barang' }
     }
 
     // Check stock availability
     for (const requestItem of input.items) {
-      const item = items?.find(i => i.id === requestItem.itemId)
+      const item = items?.find((i) => i.id === requestItem.itemId)
       if (!item) {
-        return { error: 'Item not found' }
+        return { error: 'Barang tidak ditemukan' }
       }
       if (item.stock_available < requestItem.quantity) {
-        return { error: `Insufficient stock for item` }
+        return { error: `Stok tidak mencukupi untuk barang: ${item.name}` }
       }
     }
 
-    // All items are immediately borrowed (no approval needed)
-    const status = 'borrowed'
-
-    // Create borrow request with new datetime fields
+    // Create borrow request (no user_id needed)
     const { data: borrowRequest, error: requestError } = await supabase
       .from('borrow_requests')
       .insert({
-        user_id: user.id,
+        borrower_name: input.borrowerName.trim(),
+        borrower_email: input.borrowerEmail.trim().toLowerCase(),
+        borrower_division: input.borrowerDivision.trim(),
         is_permanent: input.isPermanent,
         start_datetime: startDatetime?.toISOString() || null,
         end_datetime: endDatetime?.toISOString() || null,
@@ -122,152 +134,158 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         is_same_day: isSameDay,
         purpose: input.purpose,
         notes: input.notes,
-        status: status,
+        status: 'borrowed',
         approved_at: new Date().toISOString(),
-        approved_by: user.id,
       })
       .select()
       .single()
 
     if (requestError) {
-      return { error: 'Failed to create borrow request' }
+      console.error('Error creating borrow request:', requestError)
+      return { error: 'Gagal membuat permintaan peminjaman' }
     }
 
     // Create borrow items (junction table)
-    const borrowItems = input.items.map(item => ({
+    const borrowItems = input.items.map((item) => ({
       request_id: borrowRequest.id,
       item_id: item.itemId,
       quantity: item.quantity,
     }))
 
-    const { error: itemsInsertError } = await supabase
-      .from('borrow_items')
-      .insert(borrowItems)
+    const { error: itemsInsertError } = await supabase.from('borrow_items').insert(borrowItems)
 
     if (itemsInsertError) {
       // Rollback: delete the request
       await supabase.from('borrow_requests').delete().eq('id', borrowRequest.id)
-      return { error: 'Failed to add items to request' }
+      return { error: 'Gagal menambahkan barang ke permintaan' }
     }
 
-    // Update stock immediately (all items are borrowed/requested)
-    // Use service role client to bypass RLS policies on items table
-    const serviceClient = createServiceRoleClient()
+    // Retrieve newly inserted borrow_items to get their IDs
+    const { data: insertedBorrowItems, error: getItemsError } = await supabase
+      .from('borrow_items')
+      .select('id, item_id')
+      .eq('request_id', borrowRequest.id)
+    
+    if (getItemsError) {
+      console.error('Error fetching inserted borrow items:', getItemsError)
+    }
 
-    for (const requestItem of input.items) {
-      const item = items?.find(i => i.id === requestItem.itemId)
-      if (item) {
-        const newStock = item.stock_available - requestItem.quantity
-
-        const { error: stockError } = await serviceClient
-          .from('items')
-          .update({
-            stock_available: newStock
-          })
-          .eq('id', item.id)
-
-        if (stockError) {
-          console.error('Failed to update stock for item:', item.id, stockError)
-          // Note: Not rolling back the request, but logging the error
+    // Process selected item units
+    const borrowItemUnitsToInsert = []
+    const unitIdsToUpdate = []
+    
+    for (const item of input.items) {
+      if (item.selectedUnits && item.selectedUnits.length > 0) {
+        const dbBorrowItem = insertedBorrowItems?.find(bi => bi.item_id === item.itemId)
+        if (dbBorrowItem) {
+          for (const unit of item.selectedUnits) {
+            borrowItemUnitsToInsert.push({
+              borrow_item_id: dbBorrowItem.id,
+              item_unit_id: unit.id
+            })
+            unitIdsToUpdate.push(unit.id)
+          }
         }
       }
     }
 
+    if (borrowItemUnitsToInsert.length > 0) {
+      // Insert junction
+      const { error: junctionError } = await supabase.from('borrow_item_units').insert(borrowItemUnitsToInsert)
+      if (junctionError) console.error('Error inserting borrow_item_units', junctionError)
+      
+      // Update units availability to false (this triggers items stock_available decrement)
+      const { error: unitsUpdateError } = await supabase
+        .from('item_units')
+        .update({ is_available: false })
+        .in('id', unitIdsToUpdate)
+      if (unitsUpdateError) console.error('Error updating item_units', unitsUpdateError)
+    }
+
+    // In cases where user requested quantity manually but didn't select units
+    // (legacy or items without units), items.stock_available must still decrease.
+    // However, the new system syncs items stock from item_units triggers exclusively.
+    // Wait! If the system exclusively uses triggers, how do legacy items decrement?
+    // We should probably check if the item HAS units. If it doesn't, we can fallback to manual decrement.
+    for (const requestItem of input.items) {
+      const dbItem = items?.find((i) => i.id === requestItem.itemId)
+      if (dbItem) {
+        // Did they select units for ALL the requested quantity?
+        const selectedCount = requestItem.selectedUnits?.length || 0
+        if (selectedCount < requestItem.quantity) {
+          // Manually decrement the remainder from the items table since there are no unit codes applied
+          const newStock = dbItem.stock_available - (requestItem.quantity - selectedCount)
+          const { error: stockError } = await supabase
+            .from('items')
+            .update({ stock_available: newStock })
+            .eq('id', dbItem.id)
+
+          if (stockError) {
+            console.error('Failed to update stock for item:', dbItem.id, stockError)
+          }
+        }
+      }
+    }
+
+    // Create return token (reusable, valid for end_datetime + 30 days or 60 days for permanent)
+    let tokenExpiresAt: Date
+    if (endDatetime) {
+      tokenExpiresAt = new Date(endDatetime)
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 30)
+    } else {
+      tokenExpiresAt = new Date()
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 60)
+    }
+
+    const returnToken = generateSecureToken()
+    const tokenCreated = await createReturnToken(borrowRequest.id, returnToken, tokenExpiresAt)
+
+    if (!tokenCreated) {
+      console.error('Failed to create return token for request:', borrowRequest.id)
+    }
+
+    // Send confirmation email (fire-and-forget, don't block response)
+    const emailItems = input.items.map((ri) => {
+      const item = items?.find((i) => i.id === ri.itemId)
+      return {
+        name: item?.name || 'Barang',
+        quantity: ri.quantity,
+        category: (item?.category as any)?.name || 'Uncategorized',
+      }
+    })
+
+    // Send email (awaiting is necessary for Serverless functions to finish before exit)
+    await sendBorrowConfirmationEmail({
+      borrowerEmail: input.borrowerEmail.trim().toLowerCase(),
+      borrowerName: input.borrowerName.trim(),
+      borrowerDivision: input.borrowerDivision.trim(),
+      items: emailItems,
+      startDatetime: startDatetime?.toISOString() || null,
+      endDatetime: endDatetime?.toISOString() || null,
+      usageLocation: input.usageLocation.trim(),
+      purpose: input.purpose,
+      isPermanent: input.isPermanent,
+      returnToken: tokenCreated ? returnToken : '',
+    }).catch((err) => {
+      console.error('Failed to send confirmation email:', err)
+    })
+
     revalidatePath('/catalog')
-    revalidatePath('/dashboard')
+    revalidatePath('/admin')
+    revalidatePath('/admin/requests')
 
     return {
       success: true,
       requestId: borrowRequest.id,
-      status: status,
+      borrowerName: input.borrowerName.trim(),
+      borrowerEmail: input.borrowerEmail.trim(),
+      itemCount: input.items.length,
       message: input.isPermanent
-        ? 'Permintaan barang berhasil! Silakan ambil barang dari admin.'
-        : 'Peminjaman berhasil! Barang sudah bisa diambil.'
+        ? 'Permintaan barang berhasil! Cek email Anda untuk konfirmasi.'
+        : 'Peminjaman berhasil! Cek email Anda untuk konfirmasi dan link pengembalian.',
     }
   } catch (error) {
     console.error('Error creating borrow request:', error)
-    return { error: 'An unexpected error occurred' }
+    return { error: 'Terjadi kesalahan. Silakan coba lagi.' }
   }
 }
-
-export async function getUserBorrowRequests(userId?: string) {
-  const supabase = await createClient()
-  const user = userId ? { id: userId } : await getCurrentUser()
-
-  if (!user) {
-    return []
-  }
-
-  const { data, error } = await supabase
-    .from('borrow_requests')
-    .select(`
-      *,
-      borrow_items (
-        id,
-        quantity,
-        item:items (
-          id,
-          name,
-          category:categories (name, icon)
-        )
-      )
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching borrow requests:', error)
-    return []
-  }
-
-  return data
-}
-
-export async function declareBorrowReturn(requestId: string) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
-
-  if (!user) {
-    return {
-      error: 'Anda harus login terlebih dahulu',
-      requiresAuth: true
-    }
-  }
-
-  try {
-    const { error } = await supabase
-      .from('borrow_requests')
-      .update({
-        status: 'borrowed', // Use 'borrowed' status instead of 'return_declared'
-        return_declared_at: new Date().toISOString(),
-      })
-      .eq('id', requestId)
-      .eq('user_id', user.id)
-
-    if (error) {
-      console.error('Error declaring return:', error)
-      return { error: `Failed to declare return: ${error.message}` }
-    }
-
-    // Create log
-    const { error: logError } = await supabase.from('borrow_logs').insert({
-      request_id: requestId,
-      new_status: 'awaiting_verification',
-      old_status: 'borrowed',
-      changed_by: user.id,
-      notes: 'User declared item return, awaiting admin verification',
-    })
-
-    if (logError) {
-      console.error('Error creating log:', logError)
-    }
-
-    revalidatePath('/dashboard')
-
-    return { success: true, message: 'Pengembalian berhasil dilaporkan. Menunggu verifikasi admin.' }
-  } catch (error) {
-    console.error('Unexpected error in declareBorrowReturn:', error)
-    return { error: 'An unexpected error occurred' }
-  }
-}
-

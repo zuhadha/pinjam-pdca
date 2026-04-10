@@ -8,9 +8,13 @@ import { toast } from 'sonner'
 interface CartContextValue {
   items: CartItem[]
   itemCount: number
+  isCartOpen: boolean
+  openCart: () => void
+  closeCart: () => void
   addItem: (item: Omit<CartItem, 'addedAt'>) => void
   removeItem: (itemId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
+  toggleUnit: (itemId: string, unitId: string, unitCode: string) => void
   clearCart: () => void
   isInCart: (itemId: string) => boolean
   getItemQuantity: (itemId: string) => number
@@ -21,6 +25,10 @@ const CartContext = createContext<CartContextValue | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
+  const [isCartOpen, setIsCartOpen] = useState(false)
+
+  const openCart = () => setIsCartOpen(true)
+  const closeCart = () => setIsCartOpen(false)
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -95,6 +103,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const updateQuantity = (itemId: string, quantity: number) => {
+    // Legacy support or fallback
     if (quantity <= 0) {
       removeItem(itemId)
       return
@@ -109,6 +118,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item
       })
     )
+  }
+
+  const toggleUnit = (itemId: string, unitId: string, unitCode: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item
+      
+      const currentSelected = item.selectedUnits || []
+      const isSelected = currentSelected.some(u => u.id === unitId)
+      
+      let newSelected: {id: string, code: string}[]
+      if (isSelected) {
+        newSelected = currentSelected.filter(u => u.id !== unitId)
+      } else {
+        newSelected = [...currentSelected, {id: unitId, code: unitCode}]
+      }
+      
+      return {
+        ...item,
+        selectedUnits: newSelected,
+        quantity: newSelected.length > 0 ? newSelected.length : 1 // if 0 selected, assume they want at least 1 but haven't specified OR delete?
+      }
+    }))
   }
 
   const clearCart = () => {
@@ -133,9 +164,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         items,
         itemCount,
+        isCartOpen,
+        openCart,
+        closeCart,
         addItem,
         removeItem,
         updateQuantity,
+        toggleUnit,
         clearCart,
         isInCart,
         getItemQuantity,

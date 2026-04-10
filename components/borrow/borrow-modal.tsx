@@ -39,14 +39,36 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [usageLocation, setUsageLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
+  
+  // Borrower identity
+  const [borrowerName, setBorrowerName] = useState('')
+  const [borrowerEmail, setBorrowerEmail] = useState('')
+  const [borrowerDivision, setBorrowerDivision] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [requiresAuth, setRequiresAuth] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+
+    // Validate borrower identity
+    if (!borrowerName.trim()) {
+      setError('Nama peminjam harus diisi')
+      setLoading(false)
+      return
+    }
+    if (!borrowerEmail.trim()) {
+      setError('Email peminjam harus diisi')
+      setLoading(false)
+      return
+    }
+    if (!borrowerDivision.trim()) {
+      setError('Divisi/Departemen harus diisi')
+      setLoading(false)
+      return
+    }
 
     // Validate usage location
     if (!usageLocation.trim()) {
@@ -95,6 +117,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     const result = await createBorrowRequest({
       items,
+      borrowerName,
+      borrowerEmail,
+      borrowerDivision,
       isPermanent,
       startDatetime,
       endDatetime,
@@ -105,12 +130,19 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
     if (result.error) {
       setError(result.error)
-      setRequiresAuth((result as any).requiresAuth || false)
       setLoading(false)
     } else {
       toast.success(result.message)
       onClose()
-      router.push('/dashboard')
+      const totalQty = items.reduce((sum, i) => sum + i.quantity, 0)
+      const params = new URLSearchParams({
+        name: result.borrowerName || '',
+        email: result.borrowerEmail || '',
+        items: String(result.itemCount || items.length),
+        qty: String(totalQty),
+        type: isPermanent ? 'request' : 'borrow',
+      })
+      router.push(`/borrow-success?${params.toString()}`)
     }
   }
 
@@ -183,7 +215,46 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             </div>
 
+            {/* Borrower Identity */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 border-b pb-2">Identitas Peminjam</h3>
+              
+              <div>
+                <Label htmlFor="modal-borrower-name">Nama Lengkap *</Label>
+                <Input
+                  id="modal-borrower-name"
+                  type="text"
+                  placeholder="Masukkan nama lengkap"
+                  value={borrowerName}
+                  onChange={(e) => setBorrowerName(e.target.value)}
+                  required
+                />
+              </div>
 
+              <div>
+                <Label htmlFor="modal-borrower-email">Email *</Label>
+                <Input
+                  id="modal-borrower-email"
+                  type="email"
+                  placeholder="email@perusahaan.com"
+                  value={borrowerEmail}
+                  onChange={(e) => setBorrowerEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="modal-borrower-division">Divisi / Departemen *</Label>
+                <Input
+                  id="modal-borrower-division"
+                  type="text"
+                  placeholder="Contoh: Production, Quality"
+                  value={borrowerDivision}
+                  onChange={(e) => setBorrowerDivision(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
             {/* Borrowing Type Switch (only for borrowing) */}
             {isBorrowable && (
@@ -323,15 +394,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
             {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-                <p className="text-sm mb-2">{error}</p>
-                {requiresAuth && (
-                  <a
-                    href="/login"
-                    className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
-                  >
-                    🔐 Login Sekarang
-                  </a>
-                )}
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
@@ -352,7 +415,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 className="flex-1"
                 disabled={loading}
               >
-                {loading ? 'Memproses...' : isBorrowable ? 'Ajukan Peminjaman' : 'Ajukan Permintaan'}
+                {loading ? 'Memproses...' : isBorrowable ? 'Pinjam' : 'Ambil'}
               </Button>
             </div>
 
