@@ -37,13 +37,13 @@ export default async function HomePage() {
                   Lihat Barang Tersedia
                 </button>
               </a>
-              {!user && (
+              {/* {!user && (
                 <a href="/login">
                   <button className="px-8 py-4 bg-primary-800 text-white rounded-lg font-semibold hover:bg-primary-900 transition-colors border-2 border-white/20">
                     Login Sekarang
                   </button>
                 </a>
-              )}
+              )} */}
             </div>
           </div>
         </div>

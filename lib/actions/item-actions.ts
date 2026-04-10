@@ -23,6 +23,12 @@ export interface Item {
     image_url: string
     display_order: number
   }[]
+  units?: {
+    id: string
+    code: string
+    is_available: boolean
+    condition: string
+  }[]
 }
 
 export interface Category {

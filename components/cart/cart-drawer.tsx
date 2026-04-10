@@ -81,7 +81,6 @@ export function CartDrawer() {
                   </p>
 
                   {item.is_borrowable && item.availableUnits && item.availableUnits.length > 0 ? (
-                    {/* Unit Selection instead of Quantity */}
                     <div className="mt-2 space-y-1">
                       <span className="text-xs font-medium text-gray-700">Pilih Unit:</span>
                       <div className="flex flex-wrap gap-2 mt-1">

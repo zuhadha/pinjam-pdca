@@ -20,6 +20,11 @@ interface AddToCartButtonProps {
       image_url: string
       display_order: number
     }>
+    units?: Array<{
+      id: string
+      code: string
+      is_available: boolean
+    }>
   }
 }
 

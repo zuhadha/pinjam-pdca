@@ -25,8 +25,10 @@ export function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
       id: item.id,
       name: item.name,
       stock_available: item.stock_available,
+      quantity: 1,
+      images: item.images || [],
       is_borrowable: item.is_borrowable,
-      availableUnits: (item as any).units?.filter((u: any) => u.is_available) || [],
+      availableUnits: item.units?.filter((u) => u.is_available) || [],
       selectedUnits: [],
     })
   }
