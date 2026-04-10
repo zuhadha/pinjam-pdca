@@ -29,6 +29,11 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
       name: item.name,
       quantity: 1,
       stock_available: item.stock_available,
+      category: item.category ? {
+        id: item.category.id,
+        name: item.category.name,
+        icon: item.category.icon ?? ''
+      } : undefined,
       images: item.images || [],
       availableUnits: item.units?.filter((u: any) => u.is_available) || [],
       selectedUnits: [],
