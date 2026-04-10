@@ -48,7 +48,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
   }
 
   const removeUnit = (index: number) => {
-    setFormData({ ...formData, units: formData.units.filter((_, i) => i !== index) })
+    setFormData({ ...formData, units: formData.units.filter((_: any, i: number) => i !== index) })
   }
 
   const handleUnitChange = (index: number, code: string) => {
