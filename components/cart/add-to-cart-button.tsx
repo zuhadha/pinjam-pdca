@@ -9,6 +9,7 @@ interface AddToCartButtonProps {
     id: string
     name: string
     stock_available: number
+    is_borrowable: boolean
     category?: {
       id: string
      name: string

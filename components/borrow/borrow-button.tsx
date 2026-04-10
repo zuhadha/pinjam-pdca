@@ -29,7 +29,7 @@ export function BorrowButton({ item, isAvailable }: BorrowButtonProps) {
         onClick={() => setShowModal(true)}
         className="w-full py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
       >
-        {item.is_borrowable ? 'Pinjam' : 'Minta'}
+        {item.is_borrowable ? 'Pinjam' : 'Ambil'}
       </button>
 
       {showModal && (

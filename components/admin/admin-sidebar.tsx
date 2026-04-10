@@ -9,7 +9,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Tags
 } from 'lucide-react'
 import { useState } from 'react'
 import { logoutAction } from '@/lib/auth/actions'
@@ -23,6 +24,7 @@ interface AdminSidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Kelola Kategori', href: '/admin/categories', icon: Tags },
   { name: 'Kelola Barang', href: '/admin/items', icon: Package },
   { name: 'Kelola Peminjaman', href: '/admin/requests', icon: FileText },
   { name: 'Kelola Permintaan', href: '/admin/permanent-requests', icon: FileText },

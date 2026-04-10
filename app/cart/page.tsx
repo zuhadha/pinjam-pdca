@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { CartCheckoutForm } from '@/components/cart/cart-checkout-form'
 
 export default function CartPage() {
-  const { items, itemCount, removeItem, updateQuantity, clearCart } = useCart()
+  const { items, itemCount, removeItem, updateQuantity, toggleUnit, clearCart } = useCart()
   const router = useRouter()
 
   return (
@@ -91,27 +91,64 @@ export default function CartPage() {
                           </button>
                         </div>
 
-                        {/* Quantity Controls */}
-                        <div className="flex items-center gap-3 text-slate-500">
-                          <span className="text-sm text-gray-600">Jumlah:</span>
-                          <div className="flex items-center gap-1 border border-gray-300 rounded-lg">
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="p-1 hover:bg-gray-100 rounded-l-lg transition-colors"
-                              disabled={item.quantity <= 1}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                            <span className="w-4 text-center font-medium">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="p-1 hover:bg-gray-100 rounded-r-lg transition-colors"
-                              disabled={item.quantity >= item.stock_available}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
+                        {item.is_borrowable && item.availableUnits && item.availableUnits.length > 0 ? (
+                          <div className="flex flex-col gap-2 text-slate-500">
+                            <span className="text-sm font-medium text-gray-700">Pilih Unit Barang:</span>
+                            <div className="flex flex-wrap gap-2">
+                              {item.availableUnits.map(unit => {
+                                const isSelected = item.selectedUnits?.some(u => u.id === unit.id)
+                                return (
+                                  <label 
+                                    key={unit.id} 
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded border text-sm cursor-pointer transition-colors ${
+                                      isSelected 
+                                        ? 'bg-primary-50 border-primary-500 text-primary-700' 
+                                        : 'bg-white border-gray-200 text-gray-600 hover:border-primary-300'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected || false}
+                                      onChange={() => toggleUnit(item.id, unit.id, unit.code)}
+                                      className="h-4 w-4 text-primary-600 rounded border-gray-300 cursor-pointer"
+                                    />
+                                    {unit.code}
+                                  </label>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            {item.is_borrowable && (
+                              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                Admin belum memasukkan kode unit. Anda dapat mengatur secara kuantitas:
+                              </div>
+                            )}
+                            
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-3 text-slate-500">
+                              <span className="text-sm text-gray-600">Jumlah:</span>
+                              <div className="flex items-center gap-1 border border-gray-300 rounded-lg">
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  className="p-1 hover:bg-gray-100 rounded-l-lg transition-colors"
+                                  disabled={item.quantity <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="w-4 text-center font-medium">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="p-1 hover:bg-gray-100 rounded-r-lg transition-colors"
+                                  disabled={item.quantity >= item.stock_available}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

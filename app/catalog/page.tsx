@@ -21,9 +21,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 mt-14 lg:mt-0">
+        {/* Header (Desktop only) */}
+        <div className="mb-8 hidden lg:block">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Katalog Barang</h1>
           <p className="text-lg text-gray-600">
             Lihat dan pinjam barang yang tersedia untuk keperluan kantor
@@ -36,7 +36,6 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-600">
-            Menampilkan <strong className="text-gray-900">{items.length}</strong> barang
             {params.search && (
               <> untuk pencarian <strong className="text-primary-600">"{params.search}"</strong></>
             )}
@@ -45,7 +44,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
         {/* Items Grid */}
         {items.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {items.map((item) => (
               <ItemCard key={item.id} item={item} />
             ))}

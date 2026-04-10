@@ -27,7 +27,7 @@ export async function loginAction(
     return { error: error.message }
   }
 
-  redirect('/dashboard')
+  return { success: true }
 }
 
 export async function logoutAction() {

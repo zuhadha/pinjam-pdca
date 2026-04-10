@@ -3,8 +3,10 @@
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Category } from '@/lib/actions/item-actions'
-import { Search, X } from 'lucide-react'
+import { Search, X, ShoppingCart, User, ArrowLeft, SlidersHorizontal, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useCart } from '@/components/cart/cart-context'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -12,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import * as LucideIcons from 'lucide-react'
 
 interface SearchFiltersProps {
   categories: Category[]
@@ -64,83 +67,178 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
     })
   }
 
+  const { items: cartItems, openCart } = useCart()
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+
   const hasActiveFilters = search || categoryId || availableOnly
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-      {/* Single Row with All Filters */}
-      <div className="flex items-center gap-2">
-        {/* Search Bar */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari barang..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-          />
-          {search && (
-            <button
-              onClick={() => handleSearchChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
+    <div className="mb-6">
+      {/* --- MOBILE UI --- */}
+      <div className="block lg:hidden">
+        {/* Mobile Header: Two States */}
+        {!hasActiveFilters ? (
+          /* State 1: No Filter - Primary Blue Header */
+          <div className="fixed top-0 left-0 right-0 z-50 bg-primary-600 px-4 py-3 flex items-center gap-3">
+            <div className="relative flex-1 bg-white rounded-md flex items-center px-3 py-1.5 shadow-sm">
+              <Search className="h-4 w-4 text-primary-600 mr-2" />
+              <input
+                type="text"
+                placeholder="Cari di Katalog..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full text-sm outline-none placeholder:text-primary-300 text-primary-600"
+              />
+            </div>
+            <button className="relative p-1" onClick={openCart}>
+              <ShoppingCart className="h-6 w-6 text-white" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-white text-primary-600 text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center border border-primary-600">
+                  {cartCount}
+                </span>
+              )}
             </button>
-          )}
-        </div>
+            <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white overflow-hidden">
+              <User className="h-5 w-5" />
+            </div>
+          </div>
+        ) : (
+          /* State 2: Filter Active - White Header */
+          <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 px-3 py-2 flex items-center gap-3 shadow-sm transition-all duration-300">
+            <button onClick={resetFilters} className="p-1">
+              <ArrowLeft className="h-6 w-6 text-primary-600" />
+            </button>
+            <div className="relative flex-1 bg-gray-100 rounded-sm flex items-center px-3 py-1.5">
+              <Search className="h-4 w-4 text-gray-400 mr-2" />
+              <input
+                type="text"
+                placeholder="Cari..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full text-sm outline-none bg-transparent"
+              />
+              {search && (
+                <button onClick={() => handleSearchChange('')}>
+                  <X className="h-4 w-4 text-gray-400 ml-1" />
+                </button>
+              )}
+            </div>
+            <button 
+              onClick={handleAvailableToggle} 
+              className={cn("p-1", availableOnly ? "text-primary-600" : "text-gray-400")}
+            >
+              <SlidersHorizontal className="h-6 w-6" />
+            </button>
+          </div>
+        )}
 
-        {/* Category Dropdown */}
-        <div className="w-48">
-          <Select
-            value={categoryId || 'all'}
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Semua Kategori" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kategori</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.icon && <span className="mr-1">{cat.icon}</span>}
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Available Only Toggle */}
-        <Button
-          variant={availableOnly ? 'default' : 'outline'}
-          size="sm"
-          onClick={handleAvailableToggle}
-          className="whitespace-nowrap px-4"
-        >
-          {availableOnly ? '✓ ' : ''}Tersedia
-        </Button>
-
-        {/* Reset Button */}
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="whitespace-nowrap px-3"
-            title="Reset filter"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        {/* Categories Scroll (Mobile Only, Only when no filter) */}
+        {!hasActiveFilters && (
+          <div className="border-gray-100 flex gap-2 overflow-x-auto scrollbar-hide">
+            {categories.map((cat) => {
+              const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className="flex flex-col items-center gap-1.5 flex-shrink-0 group transition-transform active:scale-95 w-14"
+                >
+                  <div className="w-11 h-11 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-xl group-hover:border-primary-200 transition-colors">
+                    {IconComp ? <IconComp className="h-6 w-6 text-primary-600" /> : (cat.icon || '📦')}
+                  </div>
+                  <span className="text-[10px] text-gray-600 text-center leading-tight line-clamp-2 w-full">
+                    {cat.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {/* Loading Indicator */}
-      {isPending && (
-        <div className="mt-3 text-center text-sm text-gray-600">
-          Memuat...
+      {/* --- DESKTOP UI (Original with slight orange tweaks) --- */}
+      <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-2">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari barang..."
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+            />
+            {search && (
+              <button
+                onClick={() => handleSearchChange('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Dropdown */}
+          <div className="w-48">
+            <Select
+              value={categoryId || 'all'}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger className="focus:ring-primary-600">
+                <SelectValue placeholder="Semua Kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kategori</SelectItem>
+                {categories.map((cat) => {
+                  const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+                  return (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        {IconComp ? <IconComp className="h-4 w-4" /> : cat.icon && <span className="mr-1">{cat.icon}</span>}
+                        <span>{cat.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Available Only Toggle */}
+          <Button
+            variant={availableOnly ? 'default' : 'outline'}
+            size="sm"
+            onClick={handleAvailableToggle}
+            className={cn(
+              "whitespace-nowrap px-4 border-gray-300 transition-all",
+              availableOnly ? "bg-primary-600 hover:bg-primary-700 text-white border-primary-600" : ""
+            )}
+          >
+            {availableOnly ? '✓ ' : ''}Tersedia
+          </Button>
+
+          {/* Reset Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="whitespace-nowrap px-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+              title="Reset filter"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-      )}
+
+        {/* Loading Indicator */}
+        {isPending && (
+          <div className="mt-3 text-center text-sm text-gray-600">
+            Memuat...
+          </div>
+        )}
+      </div>
     </div>
   )
 }
