@@ -56,8 +56,9 @@ export function Navbar() {
 
   const isCatalogPage = pathname.startsWith('/catalog')
   const isLoginPage = pathname === '/login'
+  const isAdminPage = pathname.startsWith('/admin')
 
-  if (isLoginPage) return null
+  if (isLoginPage || isAdminPage) return null
 
   return (
     <nav className={`sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm ${isCatalogPage ? 'hidden lg:block' : ''}`}>
