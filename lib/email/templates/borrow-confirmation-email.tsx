@@ -43,7 +43,7 @@ export const BorrowConfirmationEmail = ({
   isPermanent = false,
   returnUrl = 'https://example.com',
 }: BorrowConfirmationEmailProps) => {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://invensa.app'
+  const appUrl = process.env.APP_URL || 'https://invensa.app'
   const logoUrl = `${appUrl}/logo-invensa.jpeg`
 
   return (

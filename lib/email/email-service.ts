@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  family: 4 
+  family: 4
 } as any)
 
 // Debug: Check if transporter is ready
@@ -56,7 +56,7 @@ export interface SendReminderEmailResult {
 async function sendEmailWithDelay(to: string, subject: string, html: string) {
   console.log(`[Email] Preparing to send to ${to}... (applying 2s delay)`)
   await new Promise(resolve => setTimeout(resolve, 2000))
-  
+
   try {
     const result = await transporter.sendMail({
       from: FROM_EMAIL,
@@ -89,7 +89,7 @@ export async function sendBorrowConfirmationEmail(params: {
   returnToken: string
 }): Promise<SendReminderEmailResult> {
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = process.env.APP_URL || 'http://localhost:3000'
     const returnUrl = `${appUrl}/api/return?token=${params.returnToken}`
 
     const formatDate = (dt: string | null) => {
@@ -105,7 +105,7 @@ export async function sendBorrowConfirmationEmail(params: {
     }
 
     console.log(`[Email] Starting confirmation email process for: ${params.borrowerEmail}`)
-    
+
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error('❌ Missing EMAIL_USER or EMAIL_PASS environment variables')
     }
@@ -153,7 +153,7 @@ export async function sendOverdueReminderEmail(
   returnToken: string
 ): Promise<SendReminderEmailResult> {
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = process.env.APP_URL || 'http://localhost:3000'
     const returnUrl = `${appUrl}/api/return?token=${returnToken}`
 
     const startDate = new Date(borrowRequest.startDatetime).toLocaleDateString('id-ID', {
