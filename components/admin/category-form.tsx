@@ -67,7 +67,7 @@ export function CategoryForm({ mode, initialData, onSuccess, onCancel }: Categor
   return (
     <div className="w-full">
       {!onSuccess && (
-        <div className="mb-6">
+        <div className="mb-6 bg-red-100">
           <h2 className="text-2xl font-bold">{mode === 'create' ? 'Tambah Kategori Baru' : 'Edit Kategori'}</h2>
         </div>
       )}

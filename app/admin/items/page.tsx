@@ -19,7 +19,7 @@ export default async function ItemsPage() {
         <Link href="/admin/items/create">
           <Button variant="primary" className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Tambah Barang
+            Tambah
           </Button>
         </Link>
       </div>

@@ -5,6 +5,16 @@ import { uploadItemImage, deleteItemImage, reorderItemImages } from '@/lib/actio
 import { toast } from 'sonner'
 import { X, Upload, GripVertical } from 'lucide-react'
 import { ImageCropModal } from './image-crop-modal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024 // 1MB (changed from 5MB)
 
@@ -26,6 +36,10 @@ export function ImageUpload({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [fileToProcess, setFileToProcess] = useState<File | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; imageId: string | null }>({
+    open: false,
+    imageId: null,
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (files: FileList | null) => {
@@ -91,17 +105,24 @@ export function ImageUpload({
     }
   }
 
-  const handleDelete = async (imageId: string) => {
-    if (!confirm('Hapus gambar ini?')) return
+  const handleDeleteClick = (imageId: string) => {
+    setDeleteDialog({ open: true, imageId })
+  }
 
-    const result = await deleteItemImage(imageId)
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.imageId) return
+
+    const currentImageId = deleteDialog.imageId
+    setDeleteDialog({ open: false, imageId: null })
+
+    const result = await deleteItemImage(currentImageId)
     
     if (result.error) {
       toast.error(result.error)
       return
     }
 
-    onImagesChange(images.filter(img => img.id !== imageId))
+    onImagesChange(images.filter(img => img.id !== currentImageId))
     toast.success('Gambar berhasil dihapus')
   }
 
@@ -257,7 +278,7 @@ export function ImageUpload({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleDelete(image.id)
+                    handleDeleteClick(image.id)
                   }}
                   className="absolute bottom-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Hapus gambar"
@@ -292,6 +313,24 @@ export function ImageUpload({
         }
       }}
     />
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, imageId: null })}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus Gambar?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Apakah Anda yakin ingin menghapus gambar ini? Tindakan ini tidak dapat dibatalkan.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+            Hapus
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
   )
 }

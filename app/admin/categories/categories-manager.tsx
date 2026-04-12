@@ -43,7 +43,7 @@ export function CategoriesManager({ initialCategories }: { initialCategories: an
           onClick={openCreateModal}
         >
           <Plus className="h-5 w-5" />
-          Tambah Kategori
+          Tambah
         </Button>
       </div>
 
@@ -63,7 +63,7 @@ export function CategoriesManager({ initialCategories }: { initialCategories: an
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl relative">
-            <div className="flex justify-between items-center p-6 border-b">
+            <div className="flex justify-between items-center px-6 pt-6">
               <h2 className="text-2xl font-bold text-gray-900">
                 {editingCategory ? 'Edit Kategori' : 'Tambah Kategori Baru'}
               </h2>
