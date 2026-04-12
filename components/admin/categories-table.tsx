@@ -140,42 +140,39 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {onEdit ? (
-                            <Button 
-                              variant="primary" 
-                              size="sm"
-                              className="h-8 px-3"
+                            <button 
+                              className="p-1 text-gray-500 hover:text-primary-600 transition-colors"
+                              title="Edit Kategori"
                               onClick={() => {
                                 // Close delete modal if open
                                 setDeleteDialog({ open: false, categoryId: null, categoryName: '' })
                                 onEdit(category)
                               }}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                              <Edit className="h-5 w-5" />
+                            </button>
                           ) : (
                             <Link href={`/admin/categories/edit/${category.id}`}>
-                              <Button 
-                                variant="primary" 
-                                size="sm"
-                                className="h-8 px-3"
+                              <button 
+                                className="p-1 text-gray-500 hover:text-primary-600 transition-colors"
+                                title="Edit Kategori"
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                                <Edit className="h-5 w-5" />
+                              </button>
                             </Link>
                           )}
-                          <Button
-                            variant="secondary"
-                            size="sm"
+                          <button
                             onClick={() => handleDeleteClick(category.id, category.name)}
                             disabled={deleteLoading === category.id}
-                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="p-1 text-gray-500 hover:text-red-600 transition-colors"
+                            title="Hapus Kategori"
                           >
                             {deleteLoading === category.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             )}
-                          </Button>
+                          </button>
                         </div>
                       </td>
                     </tr>

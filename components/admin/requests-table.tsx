@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { verifyReturn, assignUnitsToRequest } from '@/lib/actions/admin-actions'
-import { CheckCircle, Tag, PlusCircle, X } from 'lucide-react'
+import { CheckCircle, Tag, PlusCircle, X, Eye } from 'lucide-react'
 import { Pagination } from '@/components/ui/pagination'
 
 interface RequestsTableProps {
@@ -54,6 +54,14 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     requestId: null,
   })
   
+  const [detailsDialog, setDetailsDialog] = useState<{
+    open: boolean
+    request: any | null
+  }>({
+    open: false,
+    request: null,
+  })
+
   const [assignUnitsDialog, setAssignUnitsDialog] = useState<{
     open: boolean
     request: any | null
@@ -237,7 +245,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
               <TableHead className="w-[120px]">Tanggal</TableHead>
               <TableHead className="w-[180px]">Peminjam</TableHead>
               <TableHead className="w-[180px]">Barang</TableHead>
-              <TableHead className="w-[160px]">Keperluan</TableHead>
+              {/* <TableHead className="w-[160px]">Keperluan</TableHead> */}
               {!isPermanentView && <TableHead className="w-[140px]">Durasi</TableHead>}
               {!isPermanentView && <TableHead className="w-[160px]">Status</TableHead>}
               {!isPermanentView && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
@@ -261,15 +269,15 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-sm">{request.borrower_name || '-'}</p>
-                        <p className="text-xs text-gray-500">{request.borrower_division || '-'}</p>
-                        <p className="text-xs text-gray-400">{request.borrower_email || '-'}</p>
+                        <p className="font-medium text-sm">{request.borrower_name || '-'}<span className="text-xs text-gray-500"> - {request.borrower_division || '-'}</span></p>
+                        
+                        {/* <p className="text-xs text-gray-400">{request.borrower_email || '-'}</p> */}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {request.borrow_items?.slice(0, 2).map((bi: any) => (
-                          <span key={bi.id} className="text-sm bg-gray-100 px-2 py-1 rounded">
+                          <span key={bi.id} className="text-sm rounded">
                             {bi.item?.name} x{bi.quantity}
                           </span>
                         ))}
@@ -280,9 +288,9 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-sm">
+                    {/* <TableCell className="max-w-[160px] truncate text-sm">
                       {request.purpose}
-                    </TableCell>
+                    </TableCell> */}
                     {!isPermanentView && (
                       <TableCell>
                         {request.is_permanent ? (
@@ -312,33 +320,38 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                       </TableCell>
                     )}
                     {!isPermanentView && (
-                      <TableCell className="text-right flex justify-end gap-2">
-                        {request.status === 'borrowed' && !request.return_verified_at && checkNeedsAssignment(request) && (
-                          <Button
-                            onClick={() => {
-                              setUnitSelections({})
-                              setAssignUnitsDialog({ open: true, request })
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 border-amber-500 text-amber-600 hover:bg-amber-50 px-2"
-                            title="Assign Kode Unit"
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-3 items-center">
+                          <button
+                            onClick={() => setDetailsDialog({ open: true, request })}
+                            className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                            title="Detail Peminjaman"
                           >
-                            <Tag className="h-4 w-4 mr-1" /> Assign Unit
-                          </Button>
-                        )}
-                        {request.status === 'borrowed' && !request.return_verified_at && !checkNeedsAssignment(request) && (
-                          <Button
-                            onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
-                            variant="primary"
-                            size="sm"
-                            disabled={actionLoading === request.id}
-                            className="h-8 px-2"
-                            title="Verifikasi Pengembalian"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" /> Selesai
-                          </Button>
-                        )}
+                            <Eye className="h-5 w-5" />
+                          </button>
+                          {request.status === 'borrowed' && !request.return_verified_at && checkNeedsAssignment(request) && (
+                            <button
+                              onClick={() => {
+                                setUnitSelections({})
+                                setAssignUnitsDialog({ open: true, request })
+                              }}
+                              className="text-amber-500 hover:text-amber-700 transition-colors p-1"
+                              title="Assign Kode Unit"
+                            >
+                              <Tag className="h-5 w-5" />
+                            </button>
+                          )}
+                          {request.status === 'borrowed' && !request.return_verified_at && !checkNeedsAssignment(request) && (
+                            <button
+                              onClick={() => setConfirmDialog({ open: true, requestId: request.id })}
+                              disabled={actionLoading === request.id}
+                              className="text-green-600 hover:text-green-800 transition-colors p-1 disabled:opacity-50"
+                              title="Verifikasi Pengembalian"
+                            >
+                              <CheckCircle className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -384,7 +397,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
       {assignUnitsDialog.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center justify-between p-4">
               <h3 className="text-lg font-semibold text-gray-900">Assign Kode Unit untuk Peminjaman</h3>
               <button
                 onClick={() => !actionLoading && setAssignUnitsDialog({ ...assignUnitsDialog, open: false })}
@@ -446,12 +459,115 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
               })}
             </div>
             
-            <div className="p-4 border-t flex justify-end gap-3">
+            <div className="p-4 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setAssignUnitsDialog({ open: false, request: null })} disabled={!!actionLoading}>
                 Batal
               </Button>
               <Button onClick={handleAssignUnits} disabled={!!actionLoading} variant="primary">
                 {actionLoading ? 'Menyimpan...' : 'Simpan Assignment'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal */}
+      {detailsDialog.open && detailsDialog.request && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-4">
+              <div className='flex gap-4 items-end'>
+                <h3 className="text-lg font-semibold text-gray-900">Detail Peminjaman</h3>
+                <div>{getStatusBadge(detailsDialog.request)}</div>
+              </div>
+              <button
+                onClick={() => setDetailsDialog({ open: false, request: null })}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Nama Peminjam</p>
+                  <p className="font-medium">{detailsDialog.request.borrower_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Divisi</p>
+                  <p className="font-medium">{detailsDialog.request.borrower_division || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-medium">{detailsDialog.request.borrower_email || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Waktu Pengajuan</p>
+                  <p className="font-medium">{format(new Date(detailsDialog.request.created_at), 'dd MMM yyyy HH:mm')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Durasi Peminjaman</p>
+                  <p className="font-medium">
+                    {detailsDialog.request.is_permanent ? (
+                      'Permanen'
+                    ) : detailsDialog.request.is_same_day ? (
+                      `${format(new Date(detailsDialog.request.start_datetime), 'dd MMM yyyy HH:mm')} - ${format(new Date(detailsDialog.request.end_datetime), 'HH:mm')}`
+                    ) : (
+                      `${format(new Date(detailsDialog.request.start_datetime), 'dd MMM yyyy')} - ${format(new Date(detailsDialog.request.end_datetime), 'dd MMM yyyy')}`
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Keperluan</p>
+                  <div className='font-medium'>{detailsDialog.request.purpose}</div>
+                </div>
+              </div>
+              
+
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-2">Daftar Barang</p>
+                <div className="bg-gray-100 rounded-md divide-y">
+                  {detailsDialog.request.borrow_items?.map((bi: any) => (
+                    <div key={bi.id} className="p-3">
+                      <div className="flex justify-between items-start mb-1">
+                        <div className='flex items-center gap-2'>
+                          <p className="font-medium">{bi.item?.name}</p>
+                          {bi.borrow_item_units && bi.borrow_item_units.length > 0 ? (
+                            <div className="mt-2 text-sm text-gray-600">
+                              <div className="flex flex-wrap gap-1">
+                                {bi.borrow_item_units.map((biu: any) => (
+                                  <Badge key={biu.id} variant="secondary" className="font-mono text-xs">
+                                    {biu.item_unit?.code}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : bi.item?.units?.length > 0 ? (
+                            <p className="text-xs text-amber-600">Belum ada unit di-assign</p>
+                          ) : null}
+                        </div>
+                        <Badge variant="outline">{bi.quantity} Unit</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {detailsDialog.request.return_declared_at && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mt-4">
+                  <p className="text-sm text-blue-800 font-medium mb-1">Informasi Pengembalian</p>
+                  <p className="text-xs text-blue-600">Dilaporkan kembali: {format(new Date(detailsDialog.request.return_declared_at), 'dd MMM yyyy HH:mm')}</p>
+                  {detailsDialog.request.return_verified_at && (
+                    <p className="text-xs text-blue-600">Diverifikasi: {format(new Date(detailsDialog.request.return_verified_at), 'dd MMM yyyy HH:mm')}</p>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 flex justify-end">
+              <Button onClick={() => setDetailsDialog({ open: false, request: null })}>
+                Tutup
               </Button>
             </div>
           </div>

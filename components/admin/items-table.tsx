@@ -234,27 +234,25 @@ export function ItemsTable({ items }: ItemsTableProps) {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Link href={`/admin/items/edit/${item.id}`}>
-                            <Button 
-                              variant="primary" 
-                              size="sm"
-                              className="h-8 px-3"
+                            <button 
+                              className="p-1 text-gray-500 hover:text-primary-600 transition-colors"
+                              title="Edit Barang"
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                              <Edit className="h-5 w-5" />
+                            </button>
                           </Link>
-                          <Button
-                            variant="secondary"
-                            size="sm"
+                          <button
                             onClick={() => handleDeleteClick(item.id, item.name)}
                             disabled={deleteLoading === item.id}
-                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="p-1 text-gray-500 hover:text-red-600 transition-colors"
+                            title="Hapus Barang"
                           >
                             {deleteLoading === item.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             )}
-                          </Button>
+                          </button>
                         </div>
                       </td>
                     </tr>
