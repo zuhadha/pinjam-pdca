@@ -103,23 +103,26 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
           {showBorrowButton && (
             <div className="mt-auto pt-1">
               {isAvailable ? (
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowBorrowModal(true) }}
-                    className="flex-1 py-1 sm:py-1.5 bg-primary-600 text-white rounded text-xs sm:text-sm font-medium hover:bg-primary-700 transition-colors"
-                  >
-                    {item.is_borrowable ? 'Pinjam' : 'Ambil'}
-                  </button>
-                  <Button
-                    onClick={handleAddToCart}
-                    variant="outline"
-                    size="sm"
-                    className="px-2.5"
-                    title={isInCart(item.id) ? 'Sudah di keranjang' : 'Tambah ke keranjang'}
-                  >
-                    <ShoppingCart className={`h-4 w-4 ${isInCart(item.id) ? 'fill-primary-600 text-primary-600' : ''}`} />
-                  </Button>
-                </div>
+<div className="flex gap-2 items-center">
+  <button
+    onClick={(e) => { e.stopPropagation(); setShowBorrowModal(true) }}
+    className="flex-1 h-8 sm:h-9 py-1 sm:py-1.5 bg-primary-600 text-white rounded-full text-[10px] sm:text-sm font-medium hover:bg-primary-700 transition-colors flex items-center justify-center"
+  >
+    {item.is_borrowable ? 'Pinjam' : 'Ambil'}
+  </button>
+  
+  <Button
+    onClick={handleAddToCart}
+    variant="ghost"
+    size="sm"
+    className="shrink-0 h-8 w-8 sm:h-9 sm:w-auto sm:px-3 rounded-full text-primary-600 flex items-center justify-center p-0"
+    title={isInCart(item.id) ? 'Sudah di keranjang' : 'Tambah ke keranjang'}
+  >
+    <ShoppingCart 
+      className={`h-4 w-4 ${isInCart(item.id) ? 'fill-primary-600' : ''}`} 
+    />
+  </Button>
+</div>
               ) : (
                 <button
                   disabled
