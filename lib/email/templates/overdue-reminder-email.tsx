@@ -9,6 +9,9 @@ import {
   Section,
   Text,
   Hr,
+  Img,
+  Row,
+  Column,
 } from '@react-email/components'
 
 interface BorrowItem {
@@ -36,6 +39,9 @@ export const OverdueReminderEmail = ({
   daysOverdue = 1,
   returnUrl = 'https://example.com',
 }: OverdueReminderEmailProps) => {
+  const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+  const logoUrl = `${appUrl}/logo-invensa.png`
+
   return (
     <Html>
       <Head />
@@ -48,6 +54,14 @@ export const OverdueReminderEmail = ({
         <Container style={container}>
           {/* Header */}
           <Section style={daysOverdue > 0 ? headerOverdue : headerNormal}>
+            <Section style={logoWrapper}>
+              <Img
+                src={logoUrl}
+                alt="INVENSA"
+                width="140"
+                style={logoStyle}
+              />
+            </Section>
             <Heading style={h1}>
               {daysOverdue > 0 ? '⚠️ Peringatan Terlambat' : 'ℹ️ Pengingat Peminjaman'}
             </Heading>
@@ -78,7 +92,7 @@ export const OverdueReminderEmail = ({
             <Text style={detailLabel}>Barang yang dipinjam:</Text>
             {items.map((item, index) => (
               <Text key={index} style={itemText}>
-                • {item.name} ({item.category}) - <strong>{item.quantity} unit</strong>
+                • {item.name} - <strong>{item.quantity} unit</strong>
               </Text>
             ))}
 
@@ -142,17 +156,18 @@ export default OverdueReminderEmail
 
 // Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f1f5f9',
+  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
 }
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
+  paddingBottom: '48px',
   marginBottom: '64px',
-  maxWidth: '600px',
+  maxWidth: '580px',
+  width: '100%',
+  borderCollapse: 'collapse' as const,
 }
 
 const headerOverdue = {
@@ -165,21 +180,33 @@ const headerOverdue = {
 const headerNormal = {
   padding: '32px 24px',
   backgroundColor: '#2563eb', // Blue for normal reminder
-  borderRadius: '8px 8px 0 0',
   textAlign: 'center' as const,
+}
+
+const logoWrapper = {
+  backgroundColor: '#ffffff',
+  borderRadius: '12px',
+  display: 'inline-block',
+  padding: '12px 16px',
+  marginBottom: '20px',
+  width: 'auto',
+}
+
+const logoStyle = {
+  display: 'block',
+  margin: '0 auto',
 }
 
 const h1 = {
   color: '#ffffff',
-  fontSize: '28px',
+  fontSize: '24px',
   fontWeight: 'bold',
   margin: '0',
-  padding: '0',
 }
 
 const h2 = {
   color: '#1f2937',
-  fontSize: '20px',
+  fontSize: '18px',
   fontWeight: 'bold',
   margin: '0 0 16px',
 }
