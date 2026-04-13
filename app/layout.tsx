@@ -7,8 +7,11 @@ import { ItemDetailProvider } from "@/components/catalog/item-detail-context";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 
 export const metadata: Metadata = {
-  title: "INVENSA — Sistem Inventaris & Peminjaman Barang",
+  title: "INVENSA",
   description: "Aplikasi manajemen inventaris dan peminjaman barang internal",
+  icons: {
+    icon: "public/logo-invensa.png",
+  },
 };
 
 export default function RootLayout({
