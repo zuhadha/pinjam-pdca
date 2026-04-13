@@ -54,6 +54,12 @@ export interface SendReminderEmailResult {
  * Reusable function with 2-second delay to avoid Gmail limits
  */
 async function sendEmailWithDelay(to: string, subject: string, html: string) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    const errorMsg = '❌ Missing EMAIL_USER or EMAIL_PASS environment variables'
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+
   console.log(`[Email] Preparing to send to ${to}... (applying 2s delay)`)
   await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -66,8 +72,11 @@ async function sendEmailWithDelay(to: string, subject: string, html: string) {
     })
     console.log(`[Email] Successfully sent to ${to}. MessageId: ${result.messageId}`)
     return result
-  } catch (err) {
-    console.error(`[Email] Failed to send to ${to}:`, err)
+  } catch (err: any) {
+    console.error(`[Email] Failed to send to ${to}:`, err.message || err)
+    if (err.code === 'EAUTH') {
+      console.error('❌ Authentication failed. Double check your EMAIL_USER and App Password (ensure no quotes in Vercel dashboard).')
+    }
     throw err
   }
 }
