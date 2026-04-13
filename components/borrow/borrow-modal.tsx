@@ -200,7 +200,8 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               <h3 className="font-semibold text-gray-900 mb-3">
                 {isBorrowable ? 'Barang yang Dipinjam' : 'Barang yang Diminta'}
               </h3>
-              <div className="space-y-3">                {initialItems.map((item) => {
+              <div className="space-y-3">
+                {initialItems.map((item) => {
                   const selectedItem = items.find(i => i.itemId === item.id)
                   const availableUnits = item.units?.filter(u => u.is_available) || []
                   
@@ -474,16 +475,6 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               >
                 {loading ? 'Memproses...' : isBorrowable ? 'Pinjam' : 'Ambil'}
               </Button>
-            </div>
-
-            {/* Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
-              <p className="font-medium mb-1">ℹ️ Informasi:</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Barang regular akan otomatis disetujui</li>
-                <li>Barang sensitif memerlukan persetujuan admin</li>
-                <li>Pastikan mengembalikan barang tepat waktu</li>
-              </ul>
             </div>
           </form>
         </div>
