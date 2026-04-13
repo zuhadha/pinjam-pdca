@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "INVENSA",
   description: "Aplikasi manajemen inventaris dan peminjaman barang internal",
   icons: {
-    icon: "public/logo-invensa.png",
+    icon: "/logo-invensa.png",
   },
 };
 
