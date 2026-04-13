@@ -1,7 +1,7 @@
 'use client'
 
 import { useCart } from '@/components/cart/cart-context'
-import { X, Plus, Minus, ShoppingCart as CartIcon } from 'lucide-react'
+import { X, Plus, Minus, ShoppingBag as BagIcon, ArrowLeft, Trash2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -15,156 +15,127 @@ export function CartDrawer() {
       {/* Backdrop */}
       {isCartOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm transition-opacity"
           onClick={closeCart}
         />
       )}
 
-      {/* Drawer */}
+      {/* Drawer Container */}
       <div
         className={`
-          fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-50
-          transform transition-transform duration-300 ease-in-out
-          ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}
+          fixed z-[101] bg-white shadow-2xl transition-all duration-500 ease-in-out
+          /* Mobile: Bottom Sheet */
+          bottom-0 left-0 right-0 h-[85vh] rounded-t-3xl
+          lg:top-0 lg:right-0 lg:left-auto lg:h-full lg:w-[400px] lg:rounded-none
+          ${isCartOpen 
+            ? 'translate-y-0 lg:translate-x-0 lg:translate-y-0' 
+            : 'translate-y-full lg:translate-x-full lg:translate-y-0'
+          }
         `}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Keranjang ({itemCount})
-          </h2>
-          <button
-            onClick={closeCart}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <div className="flex flex-col h-full relative">
+          {/* Mobile Handle Bar */}
+          <div className="lg:hidden flex justify-center pt-3 pb-1">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+          </div>
 
-        {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-          {items.length === 0 ? (
-            <div className="text-center py-12">
-              <CartIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">Keranjang masih kosong</p>
-              <Link href="/catalog">
-                <Button className="mt-4" onClick={closeCart}>
-                  Lihat Katalog
-                </Button>
-              </Link>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 lg:p-6 bg-white rounded-t-3xl lg:rounded-none">
+            <div className="flex items-center gap-3">
+              <button onClick={closeCart} className="p-2 -ml-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors">
+                <ArrowLeft className="h-6 w-6 lg:hidden" />
+                <X className="h-6 w-6 hidden lg:block" />
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Tas Peminjaman</h2>
             </div>
-          ) : (
-            items.map((item) => (
-              <div key={item.id} className="flex gap-3 bg-gray-50 p-3 rounded-lg">
-                {/* Image */}
-                <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                  {item.images?.[0] ? (
-                    <img
-                      src={item.images[0].image_url}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl">
-                      {item.category?.icon || '📦'}
-                    </div>
-                  )}
+            <div className="bg-primary-50 text-primary-700 px-3 py-1 rounded-full text-sm font-bold">
+              {itemCount} Barang
+            </div>
+          </div>
+
+          {/* Cart Items List */}
+          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 no-scrollbar">
+            {items.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <BagIcon className="h-10 w-10 text-gray-400" />
                 </div>
-
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
-                    {item.name}
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Stok: {item.stock_available}
-                  </p>
-
-                  {item.is_borrowable && item.availableUnits && item.availableUnits.length > 0 ? (
-                    <div className="mt-2 space-y-1">
-                      <span className="text-xs font-medium text-gray-700">Pilih Unit:</span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {item.availableUnits.map(unit => {
-                          const isSelected = item.selectedUnits?.some(u => u.id === unit.id)
-                          return (
-                            <label 
-                              key={unit.id} 
-                              className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs cursor-pointer transition-colors ${
-                                isSelected 
-                                  ? 'bg-primary-50 border-primary-500 text-primary-700' 
-                                  : 'bg-white border-gray-200 text-gray-600 hover:border-primary-300'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected || false}
-                                onChange={() => toggleUnit(item.id, unit.id, unit.code)}
-                                className="h-3 w-3 text-primary-600 rounded border-gray-300 cursor-pointer"
-                              />
-                              {unit.code}
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {item.is_borrowable && (
-                        <div className="text-[10px] sm:text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                          Admin belum memasukkan kode unit. Anda bisa mengatur secara kuantitas:
+                <p className="text-gray-500 font-medium italic">Tas Anda masih kosong...</p>
+              </div>
+            ) : (
+              items.map((item) => (
+                <div key={item.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-primary-100 transition-colors">
+                  <div className="flex gap-4">
+                    {/* Item Image holder */}
+                    <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
+                      {item.images?.[0] ? (
+                        <img src={item.images[0].image_url} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl bg-primary-50">
+                          {item.category?.icon || '📦'}
                         </div>
                       )}
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-1 hover:bg-gray-200 rounded"
-                          disabled={item.quantity <= 1}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-1 hover:bg-gray-200 rounded"
-                          disabled={item.quantity >= item.stock_available}
-                        >
-                          <Plus className="h-4 w-4" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">{item.name}</h3>
+                        <p className="text-xs text-gray-500">Stok tersedia: {item.stock_available}</p>
+                      </div>
+
+                      {/* Quantity Logic */}
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-30"
+                            disabled={item.quantity <= 1}
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="px-3 text-sm font-bold text-gray-900">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-30"
+                            disabled={item.quantity >= item.stock_available}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <button onClick={() => removeItem(item.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
+              ))
+            )}
+          </div>
 
-                {/* Remove Button */}
-                <button
-                  onClick={() => removeItem(item.id)}
-                  className="p-2 hover:bg-red-100 rounded-full text-red-600 h-fit"
+          {/* Checkout Footer (Sticky & Modern) */}
+          {items.length > 0 && (
+            <div className="bg-white p-6 lg:p-8 space-y-4">
+              <div className="flex flex-row gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 lg:h-14 border-gray-200 text-gray-600 font-bold text-sm lg:text-base hover:bg-gray-50 rounded-xl"
+                  onClick={clearCart}
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  <Trash2 className="h-5 w-5 mr-2 hidden sm:block" />
+                  Kosongkan
+                </Button>
+                
+                <Link href="/cart" onClick={closeCart} className="flex-[2]">
+                  <Button className="w-full h-12 lg:h-14 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm lg:text-base shadow-lg shadow-primary-200 rounded-xl flex items-center justify-center gap-2">
+                    Pinjam Sekarang
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                </Link>
               </div>
-            ))
+            </div>
           )}
         </div>
-
-        {/* Footer Actions */}
-        {items.length > 0 && (
-          <div className="border-t p-4 space-y-3">
-            <Link href="/cart" onClick={closeCart}>
-              <Button className="w-full" size="lg">
-                Pinjam Sekarang ({itemCount} barang)
-              </Button>
-            </Link>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={clearCart}
-            >
-              Kosongkan Keranjang
-            </Button>
-          </div>
-        )}
       </div>
     </>
   )

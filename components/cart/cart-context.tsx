@@ -55,7 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           toast.error(
             `Tidak bisa mencampur barang ${existingTypeName} dan ${newTypeName}`,
             {
-              description: 'Silakan checkout atau kosongkan keranjang terlebih dahulu'
+              description: 'Silakan pinjam atau kosongkan keranjang terlebih dahulu'
             }
           )
           return prev

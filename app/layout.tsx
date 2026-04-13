@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/components/cart/cart-context";
 import { ItemDetailProvider } from "@/components/catalog/item-detail-context";
+import { CartDrawer } from "@/components/cart/cart-drawer";
 
 export const metadata: Metadata = {
   title: "INVENSA — Sistem Inventaris & Peminjaman Barang",
@@ -22,6 +23,7 @@ export default function RootLayout({
           <ItemDetailProvider>
             <Navbar />
             {children}
+            <CartDrawer />
             <Toaster />
           </ItemDetailProvider>
         </CartProvider>
