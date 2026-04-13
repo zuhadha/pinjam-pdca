@@ -8,7 +8,7 @@ import { useItemDetail } from './item-detail-context'
 import { ImageCarousel } from './image-carousel'
 import { useCart } from '@/components/cart/cart-context'
 import { Button } from '@/components/ui/button'
-import { ShoppingCart, Package2, MapPin } from 'lucide-react'
+import { ShoppingBag, Package2, MapPin } from 'lucide-react'
 
 interface ItemCardProps {
   item: Item
@@ -115,11 +115,11 @@ export function ItemCard({ item, showBorrowButton = true }: ItemCardProps) {
     onClick={handleAddToCart}
     variant="ghost"
     size="sm"
-    className="shrink-0 h-8 w-8 sm:h-9 sm:w-auto sm:px-3 rounded-full text-primary-600 flex items-center justify-center p-0"
-    title={isInCart(item.id) ? 'Sudah di keranjang' : 'Tambah ke keranjang'}
+    className="shrink-0 h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-full text-primary-600 flex items-center justify-center p-0 transition-all active:scale-95"
+    title={isInCart(item.id) ? 'Sudah di tas' : 'Tambah ke tas peminjaman'}
   >
-    <ShoppingCart 
-      className={`h-4 w-4 ${isInCart(item.id) ? 'fill-primary-600' : ''}`} 
+    <ShoppingBag 
+      className={`h-5 w-5 sm:h-4 sm:w-4 ${isInCart(item.id) ? 'fill-primary-600' : ''}`} 
     />
   </Button>
 </div>
