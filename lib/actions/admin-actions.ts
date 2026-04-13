@@ -148,7 +148,7 @@ export async function verifyReturn(requestId: string, adminNotes?: string) {
     // Get request with items
     const { data: request, error: fetchError } = await supabase
       .from('borrow_requests')
-      .select('*, borrow_items(item_id, quantity)')
+      .select('*, borrow_items(id, item_id, quantity, borrow_item_units(item_unit_id))')
       .eq('id', requestId)
       .single()
 
