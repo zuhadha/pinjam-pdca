@@ -102,10 +102,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </button>
 
           {/* Header Area */}
-          <div className="p-4 mb-2">
-            <div className="flex items-center justify-between mb-6">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="min-w-[40px] h-10 flex items-center justify-center">
+          <div className={`mb-2 transition-all duration-300 ${isCollapsed ? 'p-2 py-4' : 'p-4'}`}>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} mb-6`}>
+              <Link href="/" className={`flex items-center ${isCollapsed ? 'gap-0' : 'gap-3'}`}>
+                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                   <Image 
                     src="/logo-invensa.jpeg" 
                     alt="Logo" 
@@ -155,8 +155,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                       href={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-300 group
-                        ${isCollapsed ? 'justify-center' : ''}
+                        flex items-center rounded-xl font-medium transition-all duration-300 group
+                        ${isCollapsed ? 'justify-center h-11 w-11 mx-auto px-0' : 'gap-3 px-3 py-2.5'}
                         ${isActive 
                           ? 'bg-white text-primary-700 shadow-sm border border-gray-100' 
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -193,8 +193,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                       key={item.name}
                       href={item.href}
                       className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm text-gray-600 transition-all duration-300 group
-                        ${isCollapsed ? 'justify-center' : 'hover:bg-gray-100 hover:text-gray-900'}
+                        flex items-center rounded-xl font-medium text-sm text-gray-600 transition-all duration-300 group
+                        ${isCollapsed ? 'justify-center h-11 w-11 mx-auto px-0' : 'gap-3 px-3 py-2.5 hover:bg-gray-100 hover:text-gray-900'}
                       `}
                       title={isCollapsed ? item.name : ''}
                     >
