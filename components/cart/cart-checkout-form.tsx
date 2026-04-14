@@ -277,11 +277,19 @@ export function CartCheckoutForm() {
               </Label>
               <Input
                 id="location"
+                list="checkout-location-options"
                 value={usageLocation}
                 onChange={(e) => setUsageLocation(e.target.value)}
-                placeholder="Contoh: Meeting Room 1, Area Produksi B"
+                placeholder="Pilih atau ketik lokasi penggunaan"
                 required
               />
+              <datalist id="checkout-location-options">
+                <option value="R. Aula Chocolatos" />
+                <option value="R. Clevo" />
+                <option value="R. Gerry" />
+                <option value="R. Training Garuda" />
+                <option value="DMS Room" />
+              </datalist>
             </div>
 
             {/* Purpose */}

@@ -417,11 +417,19 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               <Input
                 id="usageLocation"
                 type="text"
-                placeholder="Contoh: Ruang Rapat A, Gedung C - Lantai 3"
+                list="location-options"
+                placeholder="Pilih atau ketik lokasi penggunaan"
                 value={usageLocation}
                 onChange={(e) => setUsageLocation(e.target.value)}
                 required
               />
+              <datalist id="location-options">
+                <option value="R. Aula Chocolatos" />
+                <option value="R. Clevo" />
+                <option value="R. Gerry" />
+                <option value="R. Training Garuda" />
+                <option value="DMS Room" />
+              </datalist>
             </div>
 
             {/* Purpose */}
