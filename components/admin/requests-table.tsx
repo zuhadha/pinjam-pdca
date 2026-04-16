@@ -186,7 +186,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
 
     if (needsVerification) {
-      return <Badge variant="blue">🔄 Verifikasi Return</Badge>
+      return <Badge variant="blue">Butuh Verifikasi</Badge>
     }
 
     switch (request.status) {
@@ -296,8 +296,10 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                         {request.is_permanent ? (
                           <Badge variant="secondary">Permanent</Badge>
                         ) : request.is_same_day ? (
+                          console.log(request.start_datetime),
                           <span className="text-sm">
-                            {format(new Date(request.start_datetime), 'HH:mm')} - {format(new Date(request.end_datetime), 'HH:mm')}
+                            {format(new Date(request.start_datetime.replace(/[+-]\d{2}:\d{2}$/, '')), 'HH:mm')} - 
+                            {format(new Date(request.end_datetime.replace(/[+-]\d{2}:\d{2}$/, '')), 'HH:mm')}
                           </span>
                         ) : (
                           <span className="text-sm">
@@ -322,13 +324,6 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                     {!isPermanentView && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-3 items-center">
-                          <button
-                            onClick={() => setDetailsDialog({ open: true, request })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                            title="Detail Peminjaman"
-                          >
-                            <Eye className="h-5 w-5" />
-                          </button>
                           {request.status === 'borrowed' && !request.return_verified_at && checkNeedsAssignment(request) && (
                             <button
                               onClick={() => {
@@ -351,6 +346,13 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                               <CheckCircle className="h-5 w-5" />
                             </button>
                           )}
+                          <button
+                            onClick={() => setDetailsDialog({ open: true, request })}
+                            className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                            title="Detail Peminjaman"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
                         </div>
                       </TableCell>
                     )}
