@@ -51,6 +51,7 @@ const LOCATIONS = [
   'R. Gerry',
   'R. Training Garuda',
   'DMS Room',
+  'Chocolatos Cafe',
 ]
 
 // Custom combobox for location: styled like Select but allows free text input
