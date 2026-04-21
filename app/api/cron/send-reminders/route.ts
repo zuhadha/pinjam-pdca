@@ -13,11 +13,9 @@ import { generateSecureToken } from '@/lib/utils/token-utils'
  * Triggered daily at 9:00 AM WIB (02:00 UTC) via Vercel Cron.
  * Protected by CRON_SECRET authorization header.
  *
- * Logic:
- * - Peminjaman 1 hari  → kirim H+1 dari end_datetime, pukul 09.00 WIB
- * - Peminjaman >1 hari → kirim H+1 dari end_datetime, pukul 09.00 WIB
- * - Kondisi: status = 'borrowed' AND return_declared_at IS NULL AND end_datetime <= NOW()
- * - Reminder hanya dikirim 1x (cek reminder_logs apakah sudah pernah ada yang 'sent')
+ * Condition: send reminder if end_datetime < NOW() - 1 day AND
+ *            return_declared_at IS NULL AND status = 'borrowed'
+ * Uses the EXISTING return token (created at borrow time), not a new one.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -42,15 +40,12 @@ export async function GET(request: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const now = new Date()
-    console.log(`[Cron] Running at: ${now.toISOString()} (UTC)`)
+    // Calculate "H+1 dari hari peminjaman (start_datetime)": start_datetime is at least 1 full day ago
+    const oneDayAgo = new Date()
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1)
 
-    // Reminder condition:
-    // - end_datetime MUST be in the past (peminjaman sudah melewati tanggal akhir)
-    // - Cron berjalan pukul 09.00 WIB (02.00 UTC), jadi saat ini kita query
-    //   semua request yang end_datetime-nya <= sekarang (sudah lewat).
-    //   Logika H+1: cron dipanggil sehari setelah end date, maka end_datetime < now sudah cukup.
-    const { data: candidateRequests, error: queryError } = await supabase
+    // Query overdue borrow requests
+    const { data: overdueRequests, error: queryError } = await supabase
       .from('borrow_requests')
       .select(`
         id,
@@ -68,18 +63,18 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('status', 'borrowed')
-      .eq('is_permanent', false)           // Skip permanent requests
-      .is('return_declared_at', null)      // Belum deklarasi pengembalian
-      .lt('end_datetime', now.toISOString()) // end_datetime sudah lewat
+      .eq('is_permanent', false) // Skip permanent requests
+      .is('return_declared_at', null) // Only if user hasn't declared return yet
+      .lt('start_datetime', oneDayAgo.toISOString()) // H+1: start_datetime is at least 1 day ago
 
     if (queryError) {
-      console.error('[Cron] Error querying borrow requests:', queryError)
+      console.error('Error querying overdue requests:', queryError)
       return NextResponse.json({ error: 'Database query failed' }, { status: 500 })
     }
 
-    console.log(`[Cron] Found ${candidateRequests?.length || 0} candidate requests (end_datetime has passed)`)
+    console.log(`[Cron] Found ${overdueRequests?.length || 0} overdue requests to remind`)
 
-    if (!candidateRequests || candidateRequests.length === 0) {
+    if (!overdueRequests || overdueRequests.length === 0) {
       return NextResponse.json({
         message: 'No overdue requests found',
         processed: 0,
@@ -88,33 +83,23 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Filter: hanya kirim reminder jika BELUM PERNAH ada reminder yang berhasil terkirim.
-    // Reminder hanya 1x — tidak dilihat per hari, tapi per request seumur hidup.
+    // Filter out requests that already received a reminder today
+    const today = new Date().toISOString().split('T')[0]
     const requestsToRemind = []
 
-    for (const req of candidateRequests) {
-      const { data: existingReminders, error: logError } = await supabase
+    for (const req of overdueRequests) {
+      const { data: todayLogs } = await supabase
         .from('reminder_logs')
         .select('id')
         .eq('request_id', req.id)
         .eq('status', 'sent')
+        .gte('sent_at', `${today}T00:00:00Z`)
         .limit(1)
 
-      if (logError) {
-        console.warn(`[Cron] Could not check reminder_logs for request ${req.id}:`, logError.message)
-        // Skip this request to be safe
-        continue
-      }
-
-      if (!existingReminders || existingReminders.length === 0) {
-        // Belum pernah ada reminder yang berhasil → include
+      if (!todayLogs || todayLogs.length === 0) {
         requestsToRemind.push(req)
-      } else {
-        console.log(`[Cron] Skipping request ${req.id} — reminder already sent`)
       }
     }
-
-    console.log(`[Cron] ${requestsToRemind.length} requests will receive reminder email`)
 
     let sentCount = 0
     let failedCount = 0
@@ -122,18 +107,17 @@ export async function GET(request: NextRequest) {
     for (const req of requestsToRemind) {
       try {
         const endDate = new Date(req.end_datetime)
-        const daysOverdue = Math.max(0, Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)))
+        const now = new Date()
+        const daysOverdue = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24))
 
         const userEmail = req.borrower_email
         const userName = req.borrower_name
 
         if (!userEmail) {
-          console.error(`[Cron] No email for request ${req.id}`)
+          console.error(`No email for request ${req.id}`)
           failedCount++
           continue
         }
-
-        console.log(`[Cron] Processing request ${req.id} — ${userName} <${userEmail}>, end: ${endDate.toISOString()}, overdue: ${daysOverdue}d`)
 
         // Format items for email
         const items = (req.borrow_items as any[]).map((bi) => ({
@@ -142,10 +126,10 @@ export async function GET(request: NextRequest) {
           category: bi.item.category?.name || 'Uncategorized',
         }))
 
-        // Ambil token yang sudah dibuat saat peminjaman dibuat
+        // Reuse the existing token (created at borrow time)
         let token = await getReturnTokenForRequest(req.id)
 
-        // Edge case: token tidak ada (data lama), buat baru
+        // Edge case: token doesn't exist (old data), create one
         if (!token) {
           console.log(`[Cron] No token found for request ${req.id}, creating new one`)
           token = generateSecureToken()
@@ -154,7 +138,7 @@ export async function GET(request: NextRequest) {
           await createReturnToken(req.id, token, expiresAt)
         }
 
-        // Kirim reminder email
+        // Send reminder email
         const result = await sendOverdueReminderEmail(
           userEmail,
           userName,
@@ -171,11 +155,9 @@ export async function GET(request: NextRequest) {
 
         if (result.success) {
           await logReminderEmail(req.id, userEmail, 'sent')
-          console.log(`[Cron] ✅ Reminder sent to ${userEmail} for request ${req.id}`)
           sentCount++
         } else {
           await logReminderEmail(req.id, userEmail, 'failed', result.error)
-          console.error(`[Cron] ❌ Failed to send reminder to ${userEmail}:`, result.error)
           failedCount++
         }
       } catch (error) {
