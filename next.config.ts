@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
+  basePath: "/peminjaman-barang",
+  output: "standalone",  // penting untuk deployment efisien
+  // ... konfigurasi lainnya
 };
+ 
+module.exports = nextConfig;
+
 
 export default nextConfig;
