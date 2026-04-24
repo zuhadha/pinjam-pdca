@@ -238,11 +238,11 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
     }
     // Permanent requests don't need dates
 
-    if (!purpose.trim()) {
-      setError('Keperluan harus diisi')
-      setLoading(false)
-      return
-    }
+    // if (!purpose.trim()) {
+    //   setError('Keperluan harus diisi')
+    //   setLoading(false)
+    //   return
+    // }
 
     if (items.length === 0) {
       setError('Minimal pilih 1 barang')
@@ -566,25 +566,26 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
             {/* Usage Location - Custom Combobox (Only for Borrowing) */}
             {isBorrowable && (
-              <LocationCombobox
-                value={usageLocation}
-                onChange={setUsageLocation}
-              />
+              <div className="grid gap-3 text-sm" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <LocationCombobox
+                  value={usageLocation}
+                  onChange={setUsageLocation}
+                />
+                <div>
+                  <Label htmlFor="purpose" className="mb-1 block text-gray-700">Keperluan *</Label>
+                  <Input
+                    id="purpose"
+                    className='text-sm py-2'
+                    type="text"
+                    placeholder="Contoh: Rapat, presentasi, dll..."
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             )}
 
-            {/* Purpose */}
-            <div>
-              <Label htmlFor="purpose" className="mb-1 block text-gray-700">Keperluan *</Label>
-              <Input
-                id="purpose"
-                className='text-sm'
-                type="text"
-                placeholder="Contoh: Rapat, presentasi, dll..."
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                required
-              />
-            </div>
 
             {/* Notes */}
             <div>
