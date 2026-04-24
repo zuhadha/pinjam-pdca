@@ -182,7 +182,9 @@ export default async function HomePage() {
                 </span>
               </summary>
               <p className="mt-4 text-gray-600">
-                Login terlebih dahulu, kemudian buka halaman Katalog, pilih barang yang ingin dipinjam, klik tombol "Pinjam", isi form peminjaman dengan tanggal mulai, tanggal kembali, dan keperluan, lalu submit.
+                Buka Invensa melalui BU E potal, pastikan menggunakan wifi One Garudafood. Kemudian buka halaman katalog, 
+                pilih barang yang ingin dipinjam, klik tombol "pinjam". Isi form peminjaman dengan nama peminjam, 
+                alamat email peminjam, tanggal peminjaman, tanggal pengembalian, lokasi peminjaman.
               </p>
             </details>
 
@@ -206,7 +208,9 @@ export default async function HomePage() {
                 </span>
               </summary>
               <p className="mt-4 text-gray-600">
-                Durasi peminjaman dapat disesuaikan dengan kebutuhan Anda. Namun pastikan untuk mengembalikan barang tepat waktu sesuai tanggal yang telah ditentukan saat pengajuan.
+                Durasi peminjaman dapat disesuaikan dengan kebutuhan anda, namun pastikan
+                 untuk mengembalikan barang tepat waktu sesuai tanggal yang telah ditentukan saat pengajuan. 
+                Apabila dikembalikannya tidak tepat waktu, akan ada reminder via email
               </p>
             </details>
 
@@ -218,7 +222,9 @@ export default async function HomePage() {
                 </span>
               </summary>
               <p className="mt-4 text-gray-600">
-                Kembalikan barang secara fisik ke lokasi penyimpanan, kemudian klik tombol "Declare Return" di dashboard Anda. Admin akan memverifikasi pengembalian dan mengupdate status peminjaman.
+                Kembalikan barang secara fisik ke lokasi penyimpanan, kemudian klik tombol 
+                "Konfirmasi Pengembalian Barang" pada email. Admin akan memverifikasi 
+                pengembalian dan mengupdate status peminjaman.
               </p>
             </details>
 
@@ -230,7 +236,9 @@ export default async function HomePage() {
                 </span>
               </summary>
               <p className="mt-4 text-gray-600">
-                Segera hubungi admin dan laporkan kerusakan yang terjadi. Jangan mencoba memperbaiki sendiri. Admin akan memberikan instruksi lebih lanjut terkait prosedur penanganan barang rusak.
+                Segera hubungi admin dan laporkan kerusakan yang terjadi. Jangan mencoba 
+                memperbaiki sendiri. Admin akan memberikan instruksi lebih lanjut terkait 
+                prosedur penanganan barang rusak.
               </p>
             </details>
 
@@ -242,8 +250,9 @@ export default async function HomePage() {
                 </span>
               </summary>
               <p className="mt-4 text-gray-600">
-                Ya, Anda dapat meminjam beberapa barang sekaligus dalam satu pengajuan. Cukup pilih barang yang diinginkan dan tentukan quantity untuk masing-masing barang.
-              </p>
+                Ya, Anda dapat meminjam beberapa barang sekaligus dalam satu pengajuan. 
+                Cukup pilih barang yang diinginkan dan tentukan quantity untuk masing-masing barang.
+              </p>  
             </details>
           </div>
         </div>
