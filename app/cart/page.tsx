@@ -18,7 +18,9 @@ export default function CartPage() {
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Keranjang Peminjaman</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Keranjang {items.length > 0 && !items[0].is_borrowable ? 'Permintaan' : 'Peminjaman'}
+          </h1>
           <p className="text-gray-600 mt-2">
             {itemCount > 0 ? `${itemCount} barang di keranjang` : 'Keranjang kosong'}
           </p>

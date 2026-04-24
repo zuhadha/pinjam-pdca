@@ -3,17 +3,150 @@
 import { createBorrowRequest } from '@/lib/actions/borrow-actions'
 import { useCart } from '@/components/cart/cart-context'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Calendar, Clock, MapPin, User, Mail, Building2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Calendar, Clock, MapPin, User, Mail, Building2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
+
+const DIVISIONS = [
+  'QA',
+  'QC',
+  'SHE',
+  'PDCA',
+  'PPIC',
+  'HCS',
+  'Teknik',
+  'Produksi',
+  'MPDD',
+  'EPrD',
+  'Finance',
+  'Formula',
+  'Warehouse',
+  'Project',
+  'IT',
+]
+
+const LOCATIONS = [
+  'R. Aula Chocolatos',
+  'R. Clevo',
+  'R. Gerry',
+  'R. Training Garuda',
+  'DMS Room',
+  'Chocolatos Cafe',
+]
+
+function LocationCombobox({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [inputValue, setInputValue] = useState(value)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setInputValue(value) }, [value])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = LOCATIONS.filter(l =>
+    l.toLowerCase().includes(inputValue.toLowerCase())
+  )
+
+  const handleSelect = (loc: string) => {
+    setInputValue(loc)
+    onChange(loc)
+    setOpen(false)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value)
+    onChange(e.target.value)
+    setOpen(true)
+  }
+
+  return (
+    <div className="flex flex-col gap-y-2">
+      <Label htmlFor="usageLocation" className="flex items-center gap-2">
+        <MapPin className="h-4 w-4" />
+        Lokasi Penggunaan {required && '*'}
+      </Label>
+      <div ref={containerRef} className="relative">
+        <div
+          className={`flex h-10 w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-primary-600 focus-within:border-transparent transition-shadow ${
+            open ? 'ring-2 ring-primary-600 border-transparent' : 'border-gray-300'
+          }`}
+        >
+          <input
+            id="usageLocation"
+            type="text"
+            className="flex-1 bg-transparent outline-none text-sm placeholder:text-gray-500"
+            placeholder="Pilih atau ketik lokasi penggunaan"
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={() => setOpen(true)}
+            required={required}
+            autoComplete="off"
+          />
+          <ChevronDown
+            className={`h-4 w-4 opacity-50 transition-transform cursor-pointer flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+            onClick={() => setOpen(v => !v)}
+          />
+        </div>
+
+        {open && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-md overflow-y-auto max-h-[136px]">
+            <div className="p-1">
+              {filtered.length > 0 ? (
+                filtered.map(loc => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(loc) }}
+                    className={`relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-3 pr-8 text-sm outline-none transition-colors hover:bg-primary-100 hover:text-primary-900 ${
+                      value === loc ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-900'
+                    }`}
+                  >
+                    {loc}
+                    {value === loc && (
+                      <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <svg viewBox="0 0 12 12" fill="none" className="h-4 w-4">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                ))
+              ) : inputValue ? (
+                <div className="py-1.5 pl-3 text-sm text-gray-500 italic">Gunakan "{inputValue}" sebagai lokasi</div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export function CartCheckoutForm() {
   const { items, clearCart } = useCart()
   const router = useRouter()
+
+  const isBorrowable = items.length > 0 ? items[0].is_borrowable : true
+  const isPermanent = !isBorrowable
 
   // Borrower identity
   const [borrowerName, setBorrowerName] = useState('')
@@ -46,22 +179,30 @@ export function CartCheckoutForm() {
       let startDatetime: string | undefined
       let endDatetime: string | undefined
 
-      if (borrowingType === 'same-day') {
-        if (!date || !startTime || !endTime) {
-          setError('Tanggal dan waktu harus diisi')
+      if (isBorrowable) {
+        if (borrowingType === 'same-day') {
+          if (!date || !startTime || !endTime) {
+            setError('Tanggal dan waktu harus diisi')
+            setLoading(false)
+            return
+          }
+          startDatetime = `${date}T${startTime}:00`
+          endDatetime = `${date}T${endTime}:00`
+        } else {
+          if (!startDate || !endDate) {
+            setError('Tanggal mulai dan selesai harus diisi')
+            setLoading(false)
+            return
+          }
+          startDatetime = `${startDate}T08:00:00`
+          endDatetime = `${endDate}T17:00:00`
+        }
+
+        if (!usageLocation.trim()) {
+          setError('Lokasi penggunaan harus diisi')
           setLoading(false)
           return
         }
-        startDatetime = `${date}T${startTime}:00`
-        endDatetime = `${date}T${endTime}:00`
-      } else {
-        if (!startDate || !endDate) {
-          setError('Tanggal mulai dan selesai harus diisi')
-          setLoading(false)
-          return
-        }
-        startDatetime = `${startDate}T08:00:00`
-        endDatetime = `${endDate}T17:00:00`
       }
 
       const borrowItemsPayload = items.map((item) => ({
@@ -77,10 +218,10 @@ export function CartCheckoutForm() {
         borrowerDivision,
         startDatetime,
         endDatetime,
-        usageLocation,
+        usageLocation: isPermanent ? '-' : usageLocation,
         purpose,
         notes,
-        isPermanent: false,
+        isPermanent,
       })
 
       setLoading(false)
@@ -96,7 +237,7 @@ export function CartCheckoutForm() {
           email: result.borrowerEmail || '',
           items: String(result.itemCount || 0),
           qty: String(totalQty),
-          type: 'borrow',
+          type: isPermanent ? 'request' : 'borrow',
         })
         router.push(`/borrow-success?${params.toString()}`)
       }
@@ -108,14 +249,16 @@ export function CartCheckoutForm() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">Detail Peminjaman</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-6">
+        {isBorrowable ? 'Detail Peminjaman' : 'Detail Permintaan'}
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section: Identitas Peminjam */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
             <User className="h-4 w-4" />
-            Identitas Peminjam
+            {isBorrowable ? 'Identitas Peminjam' : 'Identitas Penerima'}
           </h3>
           <div className="space-y-4">
             <div className="flex flex-col gap-y-2">
@@ -142,7 +285,9 @@ export function CartCheckoutForm() {
                 required
               />
               <p className="text-xs text-gray-500">
-                Konfirmasi peminjaman dan link pengembalian akan dikirim ke email ini.
+                {isBorrowable 
+                  ? 'Konfirmasi peminjaman dan link pengembalian akan dikirim ke email ini.'
+                  : 'Konfirmasi permintaan akan dikirim ke email ini.'}
               </p>
             </div>
             <div className="flex flex-col gap-y-2">
@@ -150,174 +295,170 @@ export function CartCheckoutForm() {
                 <Building2 className="h-4 w-4" />
                 Divisi / Departemen *
               </Label>
-              <Input
-                id="borrower-division"
+              <Select
                 value={borrowerDivision}
-                onChange={(e) => setBorrowerDivision(e.target.value)}
-                placeholder="Contoh: Production, Quality, Maintenance"
+                onValueChange={setBorrowerDivision}
                 required
-              />
+              >
+                <SelectTrigger id="borrower-division">
+                  <SelectValue placeholder="Pilih divisi / departemen" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[160px]">
+                  {DIVISIONS.map((division) => (
+                    <SelectItem key={division} value={division}>
+                      {division}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-6">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            Jadwal Peminjaman
-          </h3>
+        {isBorrowable && (
+          <div className="border-t border-gray-100 pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+              Jadwal Peminjaman
+            </h3>
 
-          {/* Borrowing Type */}
-          <div className="flex flex-col gap-y-2 mb-4">
-            <Label>Jenis Peminjaman</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setBorrowingType('same-day')}
-                className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                  borrowingType === 'same-day'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Clock className="h-6 w-6 mx-auto mb-2" />
-                <div className="font-medium">Dalam 1 Hari</div>
-                <div className="text-xs text-gray-500 mt-1">Pinjam & kembali hari ini</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setBorrowingType('multi-day')}
-                className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                  borrowingType === 'multi-day'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Calendar className="h-6 w-6 mx-auto mb-2" />
-                <div className="font-medium">Lebih dari 1 Hari</div>
-                <div className="text-xs text-gray-500 mt-1">Pinjam beberapa hari</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Date/Time Fields */}
-          {borrowingType === 'same-day' ? (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="date">Tanggal Peminjaman *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
+            {/* Borrowing Type */}
+            <div className="flex flex-col gap-y-2 mb-4">
+              <Label>Jenis Peminjaman</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBorrowingType('same-day')}
+                  className={`p-4 border-2 rounded-lg text-center transition-colors ${
+                    borrowingType === 'same-day'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Clock className="h-6 w-6 mx-auto mb-2" />
+                  <div className="font-medium">Dalam 1 Hari</div>
+                  <div className="text-xs text-gray-500 mt-1">Pinjam & kembali hari ini</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBorrowingType('multi-day')}
+                  className={`p-4 border-2 rounded-lg text-center transition-colors ${
+                    borrowingType === 'multi-day'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Calendar className="h-6 w-6 mx-auto mb-2" />
+                  <div className="font-medium">Lebih dari 1 Hari</div>
+                  <div className="text-xs text-gray-500 mt-1">Pinjam beberapa hari</div>
+                </button>
               </div>
+            </div>
+
+            {/* Date/Time Fields */}
+            {borrowingType === 'same-day' ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-y-2">
+                  <Label htmlFor="date">Tanggal Peminjaman *</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-y-2">
+                    <Label htmlFor="start-time">Waktu Mulai *</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-y-2">
+                    <Label htmlFor="end-time">Waktu Selesai *</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-y-2">
-                  <Label htmlFor="start-time">Waktu Mulai *</Label>
+                  <Label htmlFor="start-date">Tanggal Mulai *</Label>
                   <Input
-                    id="start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-y-2">
-                  <Label htmlFor="end-time">Waktu Selesai *</Label>
+                  <Label htmlFor="end-date">Tanggal Selesai *</Label>
                   <Input
-                    id="end-time"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="start-date">Tanggal Mulai *</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="end-date">Tanggal Selesai *</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
-        <div className="border-t border-gray-100 pt-6">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            Informasi Penggunaan
-          </h3>
-          <div className="space-y-4">
-            {/* Usage Location */}
-            <div className="flex flex-col gap-y-2">
-              <Label htmlFor="location" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Lokasi Penggunaan *
-              </Label>
-              <Input
-                id="location"
-                list="checkout-location-options"
+        {isBorrowable && (
+          <div className="border-t border-gray-100 pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+              Informasi Penggunaan
+            </h3>
+            <div className="space-y-4">
+              {/* Usage Location */}
+              <LocationCombobox
                 value={usageLocation}
-                onChange={(e) => setUsageLocation(e.target.value)}
-                placeholder="Pilih atau ketik lokasi penggunaan"
-                required
+                onChange={setUsageLocation}
+                required={isBorrowable}
               />
-              <datalist id="checkout-location-options">
-                <option value="R. Aula Chocolatos" />
-                <option value="R. Clevo" />
-                <option value="R. Gerry" />
-                <option value="R. Training Garuda" />
-                <option value="DMS Room" />
-              </datalist>
-            </div>
 
-            {/* Purpose */}
-            <div className="flex flex-col gap-y-2">
-              <Label htmlFor="purpose">Tujuan Peminjaman *</Label>
-              <Input
-                id="purpose"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                placeholder="Contoh: Rapat tim bulanan"
-                required
-              />
-            </div>
-
-            {/* Notes */}
-            <div className="flex flex-col gap-y-2">
-              <Label htmlFor="notes">Catatan Tambahan</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Catatan tambahan (opsional)"
-                rows={3}
-              />
+              {/* Purpose */}
+              <div className="flex flex-col gap-y-2">
+                <Label htmlFor="purpose">Tujuan Peminjaman *</Label>
+                <Input
+                  id="purpose"
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="Contoh: Rapat tim bulanan"
+                  required={isBorrowable}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
+        {/* Notes (Always shown) */}
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="notes">Catatan Tambahan</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Catatan tambahan (opsional)"
+              rows={3}
+            />
+          </div>
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -327,12 +468,11 @@ export function CartCheckoutForm() {
 
         {/* Submit Button */}
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
-          {loading ? 'Memproses...' : `Ajukan Peminjaman ${items.length} Barang`}
+          {loading ? 'Memproses...' : `Ajukan ${isBorrowable ? 'Peminjaman' : 'Permintaan'} ${items.length} Barang`}
         </Button>
 
         <p className="text-xs text-gray-500 text-center">
-          Email konfirmasi beserta link pengembalian akan dikirim ke email Anda setelah peminjaman
-          berhasil.
+          Email konfirmasi {isBorrowable ? 'beserta link pengembalian ' : ''}akan dikirim ke email Anda setelah {isBorrowable ? 'peminjaman' : 'permintaan'} berhasil.
         </p>
       </form>
     </div>
