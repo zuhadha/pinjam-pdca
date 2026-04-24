@@ -40,7 +40,7 @@ const DIVISIONS = [
   'EPrD',
   'Finance',
   'Formula',
-  'Warehous',
+  'Warehouse',
   'Project',
   'IT',
 ]
@@ -116,7 +116,7 @@ function LocationCombobox({ value, onChange }: { value: string; onChange: (v: st
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-md overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-md overflow-y-auto max-h-[136px]">
           <div className="p-1">
             {filtered.length > 0 ? (
               filtered.map(loc => (
@@ -452,7 +452,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                   <SelectTrigger id="modal-borrower-division">
                     <SelectValue placeholder="Pilih divisi / departemen" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[160px]">
                     {DIVISIONS.map((division) => (
                       <SelectItem key={division} value={division}>
                         {division}
