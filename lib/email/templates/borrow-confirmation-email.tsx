@@ -67,7 +67,7 @@ export const BorrowConfirmationEmail = ({
               />
             </Section>
             <Heading style={h1}>
-              {isPermanent ? '📦 Permintaan Barang Berhasil' : '✅ Peminjaman Barang Berhasil'}
+              {isPermanent ? 'Permintaan Barang Berhasil' : 'Peminjaman Barang Berhasil'}
             </Heading>
           </Section>
 
@@ -102,8 +102,12 @@ export const BorrowConfirmationEmail = ({
               <div style={detailRow}>
                 <Text style={detailText}><strong>Nama:</strong> {borrowerName}</Text>
                 <Text style={detailText}><strong>Divisi:</strong> {borrowerDivision}</Text>
-                <Text style={detailText}><strong>Keperluan:</strong> {purpose}</Text>
-                <Text style={detailText}><strong>Lokasi Penggunaan:</strong> {usageLocation}</Text>
+                {!isPermanent && (
+                  <>
+                    <Text style={detailText}><strong>Keperluan:</strong> {purpose}</Text>
+                    <Text style={detailText}><strong>Lokasi Penggunaan:</strong> {usageLocation}</Text>
+                  </>
+                )}
               </div>
               
               {!isPermanent && (

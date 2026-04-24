@@ -13,7 +13,7 @@ import { generateSecureToken } from '@/lib/utils/token-utils'
  * Triggered daily at 9:00 AM WIB (02:00 UTC) via Vercel Cron.
  * Protected by CRON_SECRET authorization header.
  *
- * Condition: send reminder if end_datetime < NOW() - 1 day AND
+ * Condition: send reminder if end_datetime < start of today AND
  *            return_declared_at IS NULL AND status = 'borrowed'
  * Uses the EXISTING return token (created at borrow time), not a new one.
  */
@@ -33,6 +33,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // --- Cek Hari Libur (Weekend) ---
+    // Jangan proses reminder di hari Sabtu (6) atau Minggu (0)
+    const nowWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
+    const dayOfWeek = nowWIB.getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      console.log('[Cron] Skipped reminder processing because today is weekend.')
+      return NextResponse.json({
+        message: 'Skipped on weekends',
+        processed: 0,
+        sent: 0,
+        failed: 0,
+      })
+    }
+
     // Create Supabase client with service role for admin access
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -40,9 +54,18 @@ export async function GET(request: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Calculate "H+1 dari hari peminjaman (start_datetime)": start_datetime is at least 1 full day ago
-    const oneDayAgo = new Date()
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+    // Calculate "Start of today" in WIB (UTC+7) to find requests that ended before today
+    // This ensures reminder is sent on H+1 (the day after the borrow ends)
+    // Vercel runs on UTC, so we must explicitly use Asia/Jakarta timezone
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const [month, day, year] = formatter.format(now).split('/')
+    const startOfTodayWIB = new Date(`${year}-${month}-${day}T00:00:00+07:00`)
 
     // Query overdue borrow requests
     const { data: overdueRequests, error: queryError } = await supabase
@@ -65,7 +88,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'borrowed')
       .eq('is_permanent', false) // Skip permanent requests
       .is('return_declared_at', null) // Only if user hasn't declared return yet
-      .lt('start_datetime', oneDayAgo.toISOString()) // H+1: start_datetime is at least 1 day ago
+      .lt('end_datetime', startOfTodayWIB.toISOString()) // H+1: end_datetime was before today
 
     if (queryError) {
       console.error('Error querying overdue requests:', queryError)

@@ -63,7 +63,7 @@ export const OverdueReminderEmail = ({
               />
             </Section>
             <Heading style={h1}>
-              {daysOverdue > 0 ? '⚠️ Peringatan Terlambat' : 'ℹ️ Pengingat Peminjaman'}
+              {daysOverdue > 0 ? 'Peringatan Terlambat' : 'Pengingat Peminjaman'}
             </Heading>
           </Section>
 
@@ -84,42 +84,46 @@ export const OverdueReminderEmail = ({
           </Section>
 
           {/* Borrow Details */}
-          <Section style={detailsBox}>
-            <Heading as="h2" style={h2}>
-              📋 Detail Peminjaman
-            </Heading>
-            
-            <Text style={detailLabel}>Barang yang dipinjam:</Text>
-            {items.map((item, index) => (
-              <Text key={index} style={itemText}>
-                • {item.name} - <strong>{item.quantity} unit</strong>
+          <Section style={detailsBoxWrapper}>
+            <Section style={detailsBox}>
+              <Heading as="h2" style={h2}>
+                📋 Detail Peminjaman
+              </Heading>
+              
+              <Text style={detailLabel}>Barang yang dipinjam:</Text>
+              {items.map((item, index) => (
+                <Text key={index} style={itemText}>
+                  • {item.name} - <strong>{item.quantity} unit</strong>
+                </Text>
+              ))}
+
+              <Hr style={divider} />
+
+              <Text style={detailText}>
+                <strong>Periode Peminjaman:</strong>
+                <br />
+                {startDate} - {endDate}
               </Text>
-            ))}
 
-            <Hr style={divider} />
-
-            <Text style={detailText}>
-              <strong>Periode Peminjaman:</strong>
-              <br />
-              {startDate} - {endDate}
-            </Text>
-
-            <Text style={detailText}>
-              <strong>Lokasi Penggunaan:</strong>
-              <br />
-              {usageLocation}
-            </Text>
+              <Text style={detailText}>
+                <strong>Lokasi Penggunaan:</strong>
+                <br />
+                {usageLocation}
+              </Text>
+            </Section>
           </Section>
 
           {/* Warning Message */}
-          <Section style={daysOverdue > 0 ? warningBox : infoBox}>
-            <Text style={daysOverdue > 0 ? warningTextBox : infoTextBox}>
-              {daysOverdue > 0 ? 
-                '⚠️ Mohon segera mengembalikan barang yang dipinjam agar tidak mengganggu kebutuhan pengguna lain. Barang yang terlambat dikembalikan dapat mempengaruhi akses peminjaman Anda di masa depan.' 
-              : 
-                'ℹ️ Jangan lupa untuk menekan tombol konfirmasi di bawah ini apabila Anda telah selesai meminjam dan mengembalikan barangnya.'
-              }
-            </Text>
+          <Section style={infoBoxWrapper}>
+            <Section style={daysOverdue > 0 ? warningBox : infoBox}>
+              <Text style={daysOverdue > 0 ? warningTextBox : infoTextBox}>
+                {daysOverdue > 0 ? 
+                  '⚠️ Mohon segera mengembalikan barang yang dipinjam agar tidak mengganggu kebutuhan pengguna lain. Barang yang terlambat dikembalikan dapat mempengaruhi akses peminjaman Anda di masa depan.' 
+                : 
+                  'ℹ️ Jangan lupa untuk menekan tombol konfirmasi di bawah ini apabila Anda telah selesai meminjam dan mengembalikan barangnya.'
+                }
+              </Text>
+            </Section>
           </Section>
 
           {/* CTA Button */}
@@ -212,7 +216,7 @@ const h2 = {
 }
 
 const section = {
-  padding: '0 24px',
+  padding: '0 32px',
   marginTop: '24px',
 }
 
@@ -223,12 +227,17 @@ const text = {
   margin: '0 0 16px',
 }
 
+const detailsBoxWrapper = {
+  padding: '0 24px',
+  marginTop: '24px',
+}
+
 const detailsBox = {
   padding: '24px',
-  margin: '24px',
   backgroundColor: '#f9fafb',
   borderRadius: '8px',
   border: '1px solid #e5e7eb',
+  width: '100%',
 }
 
 const detailLabel = {
@@ -256,10 +265,10 @@ const detailText = {
 
 const warningBox = {
   padding: '20px 24px',
-  margin: '24px',
   backgroundColor: '#fef3c7',
   borderRadius: '8px',
   borderLeft: '4px solid #f59e0b',
+  width: '100%',
 }
 
 const warningText = {
@@ -274,12 +283,17 @@ const warningTextBox = {
   margin: '0',
 }
 
+const infoBoxWrapper = {
+  padding: '0 24px',
+  marginTop: '24px',
+}
+
 const infoBox = {
   padding: '20px 24px',
-  margin: '24px',
   backgroundColor: '#eff6ff',
   borderRadius: '8px',
   borderLeft: '4px solid #3b82f6',
+  width: '100%',
 }
 
 const infoTextBox = {
@@ -296,36 +310,36 @@ const buttonContainer = {
 
 const button = {
   backgroundColor: '#16a34a',
-  borderRadius: '6px',
+  borderRadius: '8px',
   color: '#ffffff',
-  fontSize: '16px',
+  fontSize: '15px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 32px',
+  padding: '16px 32px',
 }
 
 const smallText = {
   color: '#6b7280',
   fontSize: '13px',
   lineHeight: '20px',
-  margin: '0 24px',
+  margin: '6px 32px',
   textAlign: 'center' as const,
 }
 
 const divider = {
-  borderColor: '#e5e7eb',
+  borderColor: '#e2e8f0',
   margin: '24px 0',
 }
 
 const footer = {
-  padding: '0 24px',
-  marginTop: '24px',
+  padding: '0 32px',
+  marginTop: '32px',
 }
 
 const footerText = {
-  color: '#6b7280',
+  color: '#94a3b8',
   fontSize: '12px',
   lineHeight: '18px',
   textAlign: 'center' as const,
