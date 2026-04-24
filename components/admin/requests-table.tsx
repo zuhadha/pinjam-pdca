@@ -43,6 +43,7 @@ interface RequestsTableProps {
 export function RequestsTable({ requests, isPermanentView = false }: RequestsTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [usageLocationFilter, setUsageLocationFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
@@ -138,6 +139,16 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     })
   }
 
+  const uniqueLocations = useMemo(() => {
+    const locations = new Set<string>()
+    requests.forEach(req => {
+      if (req.usage_location && req.usage_location !== '-') {
+        locations.add(req.usage_location)
+      }
+    })
+    return Array.from(locations).sort()
+  }, [requests])
+
   // Filter and search logic
   const filteredRequests = useMemo(() => {
     return requests.filter(request => {
@@ -146,6 +157,13 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
         if (statusFilter === 'verification' && (!request.return_declared_at || request.return_verified_at)) {
           return false
         } else if (statusFilter !== 'verification' && request.status !== statusFilter) {
+          return false
+        }
+      }
+
+      // Usage location filter
+      if (usageLocationFilter !== 'all') {
+        if (request.usage_location !== usageLocationFilter) {
           return false
         }
       }
@@ -168,7 +186,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
 
       return true
     })
-  }, [requests, statusFilter, searchQuery])
+  }, [requests, statusFilter, usageLocationFilter, searchQuery])
 
   // Pagination
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
@@ -180,7 +198,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
   // Reset to page 1 when filters change
   useMemo(() => {
     setCurrentPage(1)
-  }, [statusFilter, searchQuery])
+  }, [statusFilter, usageLocationFilter, searchQuery])
 
   const getStatusBadge = (request: any) => {
     const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
@@ -233,6 +251,17 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
             <SelectItem value="borrowed">Sedang Dipinjam</SelectItem>
             <SelectItem value="verification">Perlu Verifikasi</SelectItem>
             <SelectItem value="returned">Dikembalikan</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={usageLocationFilter} onValueChange={setUsageLocationFilter}>
+          <SelectTrigger className="sm:w-[200px]">
+            <SelectValue placeholder="Filter Lokasi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Lokasi</SelectItem>
+            {uniqueLocations.map(location => (
+              <SelectItem key={location} value={location}>{location}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -521,6 +550,10 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                 <div>
                   <p className="text-sm text-gray-500">Keperluan</p>
                   <div className='font-medium'>{detailsDialog.request.purpose}</div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Lokasi Penggunaan</p>
+                  <p className="font-medium">{detailsDialog.request.usage_location || '-'}</p>
                 </div>
               </div>
               
