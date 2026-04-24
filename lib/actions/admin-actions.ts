@@ -25,11 +25,12 @@ export async function getAdminStats() {
       .from('categories')
       .select('*', { count: 'exact', head: true })
 
-    // Currently borrowed (borrowed status only)
+    // Currently borrowed (borrowed status only, non-permanent)
     const { count: borrowedCount } = await supabase
       .from('borrow_requests')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'borrowed')
+      .eq('is_permanent', false)
 
     // Awaiting verification (return declared but not yet verified)
     const { count: verificationCount } = await supabase
@@ -37,6 +38,7 @@ export async function getAdminStats() {
       .select('*', { count: 'exact', head: true })
       .not('return_declared_at', 'is', null)
       .is('return_verified_at', null)
+      .eq('is_permanent', false)
 
     // Items with low stock (< 20% of total)
     const { data: itemsData } = await supabase
