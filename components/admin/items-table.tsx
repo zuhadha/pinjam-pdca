@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { deleteItem } from '@/lib/actions/item-management-actions'
-import { Edit, Trash2, Loader2 } from 'lucide-react'
+import { Edit, Trash2, Loader2, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -41,6 +41,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [locationFilter, setLocationFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -89,9 +90,14 @@ export function ItemsTable({ items }: ItemsTableProps) {
         return false
       }
 
+      // Location filter
+      if (locationFilter !== 'all' && item.location !== locationFilter) {
+        return false
+      }
+
       return true
     })
-  }, [items, searchQuery, categoryFilter, typeFilter])
+  }, [items, searchQuery, categoryFilter, typeFilter, locationFilter])
 
   // Pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
@@ -103,7 +109,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
   // Reset to page 1 when filters change
   useMemo(() => {
     setCurrentPage(1)
-  }, [searchQuery, categoryFilter, typeFilter])
+  }, [searchQuery, categoryFilter, typeFilter, locationFilter])
 
   // Get unique categories from items
   const categories = useMemo(() => {
@@ -114,6 +120,17 @@ export function ItemsTable({ items }: ItemsTableProps) {
       }
     })
     return Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name }))
+  }, [items])
+
+  // Get unique locations from items
+  const uniqueLocations = useMemo(() => {
+    const locSet = new Set<string>()
+    items.forEach(item => {
+      if (item.location && item.location.trim()) {
+        locSet.add(item.location.trim())
+      }
+    })
+    return Array.from(locSet).sort()
   }, [items])
 
   return (
@@ -138,13 +155,24 @@ export function ItemsTable({ items }: ItemsTableProps) {
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="sm:w-[200px]">
+          <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Semua Tipe" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Tipe</SelectItem>
             <SelectItem value="borrowable">Pinjaman</SelectItem>
             <SelectItem value="requestable">Permintaan</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="sm:w-[180px]">
+            <SelectValue placeholder="Semua Lokasi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Lokasi</SelectItem>
+            {uniqueLocations.map(loc => (
+              <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <div className="text-sm text-gray-600 flex items-center ml-auto">
@@ -206,6 +234,12 @@ export function ItemsTable({ items }: ItemsTableProps) {
                             <div className="font-medium text-gray-900">{item.name}</div>
                             {item.description && (
                               <div className="text-sm text-gray-500 line-clamp-1">{item.description}</div>
+                            )}
+                            {item.location && (
+                              <div className="text-[10px] font-medium text-primary-600 uppercase tracking-tight mt-1 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {item.location}
+                              </div>
                             )}
                           </div>
                         </div>
