@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
+import { DashboardCharts } from '@/components/admin/dashboard-charts'
 
 export default async function AdminDashboardPage() {
   const stats = await getAdminStats()
@@ -15,6 +16,118 @@ export default async function AdminDashboardPage() {
   }
 
   const recentRequestsLimited = recentRequests.slice(0, 5)
+
+  // -- Data Aggregation for Charts --
+  
+  // 1a. Trend Peminjaman (7 Hari Terakhir)
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return format(d, 'MMM dd')
+  })
+  const trendData = last7Days.map(dateStr => {
+    return {
+      date: dateStr,
+      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM dd') === dateStr).length
+    }
+  })
+
+  // 1b. Trend 30 Hari
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (29 - i))
+    return format(d, 'MMM dd')
+  })
+  const trend30DaysData = last30Days.map(dateStr => {
+    return {
+      date: dateStr,
+      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM dd') === dateStr).length
+    }
+  })
+
+  // 1c. Trend 6 Bulan
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - (5 - i))
+    return format(d, 'MMM yyyy')
+  })
+  const monthlyTrendData = last6Months.map(monthStr => {
+    return {
+      date: monthStr,
+      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM yyyy') === monthStr).length
+    }
+  })
+
+  // 2. Kategori Terbanyak
+  const categoryMap = new Map<string, number>()
+  recentRequests.forEach((req: any) => {
+    req.borrow_items?.forEach((bi: any) => {
+      const catName = bi.item?.category?.name || 'Lainnya'
+      categoryMap.set(catName, (categoryMap.get(catName) || 0) + bi.quantity)
+    })
+  })
+  const categoryData = Array.from(categoryMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+
+  // 3. Top 3 Barang
+  const itemMap = new Map<string, number>()
+  recentRequests.forEach((req: any) => {
+    req.borrow_items?.forEach((bi: any) => {
+      const itemName = bi.item?.name || 'Barang Tidak Dikenal'
+      itemMap.set(itemName, (itemMap.get(itemName) || 0) + bi.quantity)
+    })
+  })
+  const topItemsData = Array.from(itemMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3)
+
+  // 4. Departemen Paling Aktif
+  const deptMap = new Map<string, number>()
+  recentRequests.forEach((req: any) => {
+    const dept = req.borrower_division || 'Lainnya'
+    deptMap.set(dept, (deptMap.get(dept) || 0) + 1)
+  })
+  const deptData = Array.from(deptMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+
+  // 5. Ketepatan Waktu Pengembalian
+  let onTime = 0
+  let late = 0
+  recentRequests.forEach((req: any) => {
+    if (req.return_verified_at && req.end_datetime) {
+      const returnDate = new Date(req.return_verified_at)
+      const endDate = new Date(req.end_datetime)
+      if (returnDate > endDate) {
+        late++
+      } else {
+        onTime++
+      }
+    } else if (req.status === 'borrowed' && req.end_datetime) {
+      // Jika masih dipinjam tapi sudah lewat deadline
+      const today = new Date()
+      const endDate = new Date(req.end_datetime)
+      if (today > endDate) {
+        late++
+      }
+    }
+  })
+  
+  // Jika belum ada data sama sekali, berikan nilai default agar chart tetap render cantik
+  if (onTime === 0 && late === 0) {
+    onTime = 1; 
+  }
+
+  const punctualityData = [
+    { name: 'Tepat Waktu', value: onTime },
+    { name: 'Terlambat', value: late }
+  ]
+
+  // ---------------------------------
 
   return (
     <div className="space-y-8">
@@ -88,6 +201,17 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card> */}
       </div>
+
+      {/* Dashboard Charts */}
+      <DashboardCharts
+        trendData={trendData}
+        trend30DaysData={trend30DaysData}
+        monthlyTrendData={monthlyTrendData}
+        categoryData={categoryData}
+        topItemsData={topItemsData}
+        deptData={deptData}
+        punctualityData={punctualityData}
+      />
 
       {/* Recent Requests */}
       {/* <Card>
