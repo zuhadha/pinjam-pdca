@@ -188,7 +188,7 @@ export default async function HomePage() {
               </p>
             </details>
 
-            <details className="group bg-gray-50 rounded-lg border border-gray-200 p-6">
+            {/* <details className="group bg-gray-50 rounded-lg border border-gray-200 p-6">
               <summary className="flex justify-between items-center cursor-pointer list-none font-semibold text-gray-900">
                 <span>Apakah semua barang bisa langsung dipinjam?</span>
                 <span className="transition group-open:rotate-180">
@@ -198,7 +198,7 @@ export default async function HomePage() {
               <p className="mt-4 text-gray-600">
                 Tidak. Barang regular dapat langsung dipinjam (auto-approve), sedangkan barang sensitif seperti laptop, kamera, dan proyektor memerlukan persetujuan admin terlebih dahulu.
               </p>
-            </details>
+            </details> */}
 
             <details className="group bg-gray-50 rounded-lg border border-gray-200 p-6">
               <summary className="flex justify-between items-center cursor-pointer list-none font-semibold text-gray-900">
