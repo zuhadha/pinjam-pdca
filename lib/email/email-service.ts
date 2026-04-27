@@ -1,33 +1,62 @@
 'use server'
 
-import nodemailer from 'nodemailer'
 import { render } from '@react-email/components'
 import OverdueReminderEmail from './templates/overdue-reminder-email'
 import BorrowConfirmationEmail from './templates/borrow-confirmation-email'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-// Setup Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Use STARTTLS on port 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  family: 4
-} as any)
+// ─── Brevo API config ────────────────────────────────────────────────────────
 
-// Debug: Check if transporter is ready
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ SMTP Transporter Error:', error)
-  } else {
-    console.log('✅ SMTP Transporter is ready to send emails')
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
+
+/** Sender that appears in all outgoing emails */
+const FROM_SENDER = {
+  name: 'INVENSA',
+  email: process.env.BREVO_SENDER_EMAIL || 'no-reply@invensa.id',
+}
+
+/**
+ * Low-level helper: POST a single email via Brevo Transactional Email API.
+ * Uses native fetch — no external SMTP dependency, no artificial delays.
+ *
+ * Brevo API docs: https://developers.brevo.com/reference/sendtransacemail
+ */
+async function sendEmail(to: string, subject: string, htmlContent: string): Promise<string> {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) {
+    throw new Error('❌ Missing BREVO_API_KEY environment variable')
   }
-})
 
-const FROM_EMAIL = `"INVENSA" <${process.env.EMAIL_USER}>`
+  const body = JSON.stringify({
+    sender: FROM_SENDER,
+    to: [{ email: to }],
+    subject,
+    htmlContent,
+  })
+
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error(`[Email] Brevo API error (${response.status}):`, errorText)
+    throw new Error(`Brevo API returned ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json()
+  const messageId: string = data.messageId ?? data.messageId ?? '(no-id)'
+  console.log(`[Email] Sent to ${to} | messageId: ${messageId}`)
+  return messageId
+}
+
+// ─── Public interfaces ────────────────────────────────────────────────────────
 
 export interface BorrowItemData {
   name: string
@@ -50,36 +79,7 @@ export interface SendReminderEmailResult {
   error?: string
 }
 
-/**
- * Reusable function with 2-second delay to avoid Gmail limits
- */
-async function sendEmailWithDelay(to: string, subject: string, html: string) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    const errorMsg = '❌ Missing EMAIL_USER or EMAIL_PASS environment variables'
-    console.error(errorMsg)
-    throw new Error(errorMsg)
-  }
-
-  console.log(`[Email] Preparing to send to ${to}... (applying 2s delay)`)
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  try {
-    const result = await transporter.sendMail({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    })
-    console.log(`[Email] Successfully sent to ${to}. MessageId: ${result.messageId}`)
-    return result
-  } catch (err: any) {
-    console.error(`[Email] Failed to send to ${to}:`, err.message || err)
-    if (err.code === 'EAUTH') {
-      console.error('❌ Authentication failed. Double check your EMAIL_USER and App Password (ensure no quotes in Vercel dashboard).')
-    }
-    throw err
-  }
-}
+// ─── Email senders ────────────────────────────────────────────────────────────
 
 /**
  * Send borrow confirmation email to borrower when request is created.
@@ -113,11 +113,7 @@ export async function sendBorrowConfirmationEmail(params: {
       })
     }
 
-    console.log(`[Email] Starting confirmation email process for: ${params.borrowerEmail}`)
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.error('❌ Missing EMAIL_USER or EMAIL_PASS environment variables')
-    }
+    console.log(`[Email] Sending confirmation email to: ${params.borrowerEmail}`)
 
     const emailHtml = await render(
       BorrowConfirmationEmail({
@@ -139,9 +135,9 @@ export async function sendBorrowConfirmationEmail(params: {
       ? `✅ Permintaan Barang Berhasil — ${params.borrowerName}`
       : `✅ Peminjaman Barang Berhasil — ${params.borrowerName}`
 
-    const info = await sendEmailWithDelay(params.borrowerEmail, subject, emailHtml)
+    const messageId = await sendEmail(params.borrowerEmail, subject, emailHtml)
 
-    return { success: true, messageId: info.messageId }
+    return { success: true, messageId }
   } catch (error) {
     console.error('❌ Unexpected error in sendBorrowConfirmationEmail:', error)
     return {
@@ -195,14 +191,14 @@ export async function sendOverdueReminderEmail(
       })
     )
 
-    const subject = borrowRequest.daysOverdue > 0
-      ? `⚠️ Peringatan: Pengembalian Barang Terlambat ${borrowRequest.daysOverdue} Hari`
-      : `ℹ️ Pengingat: Status Barang Sedang Dipinjam`
+    const subject =
+      borrowRequest.daysOverdue > 0
+        ? `⚠️ Peringatan: Pengembalian Barang Terlambat ${borrowRequest.daysOverdue} Hari`
+        : `ℹ️ Pengingat: Status Barang Sedang Dipinjam`
 
-    // Menggunakan fungsi nodemailer + delay
-    const info = await sendEmailWithDelay(userEmail, subject, emailHtml)
+    const messageId = await sendEmail(userEmail, subject, emailHtml)
 
-    return { success: true, messageId: info.messageId }
+    return { success: true, messageId }
   } catch (error) {
     console.error('Unexpected error sending reminder email:', error)
     return {
@@ -211,6 +207,8 @@ export async function sendOverdueReminderEmail(
     }
   }
 }
+
+// ─── Database helpers (unchanged) ─────────────────────────────────────────────
 
 /**
  * Log reminder email attempt to database
