@@ -13,7 +13,7 @@ import { generateSecureToken } from '@/lib/utils/token-utils'
  * Triggered daily at 9:00 AM WIB (02:00 UTC) via Vercel Cron.
  * Protected by CRON_SECRET authorization header.
  *
- * Condition: send reminder if end_datetime < start of today AND
+ * Condition: send reminder if end_datetime < start of today (WIB) AND
  *            return_declared_at IS NULL AND status = 'borrowed'
  * Uses the EXISTING return token (created at borrow time), not a new one.
  */
@@ -54,9 +54,8 @@ export async function GET(request: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Calculate "Start of today" in WIB (UTC+7) to find requests that ended before today
-    // This ensures reminder is sent on H+1 (the day after the borrow ends)
-    // Vercel runs on UTC, so we must explicitly use Asia/Jakarta timezone
+    // Hitung "start of today" dalam WIB (UTC+7) menggunakan Intl.DateTimeFormat
+    // agar perbandingan end_datetime konsisten dengan timezone Asia/Jakarta
     const now = new Date()
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Jakarta',
@@ -65,9 +64,19 @@ export async function GET(request: NextRequest) {
       day: '2-digit',
     })
     const [month, day, year] = formatter.format(now).split('/')
-    const startOfTodayWIB = new Date(`${year}-${month}-${day}T00:00:00+07:00`)
 
-    // Query overdue borrow requests
+    const startOfTodayWIB = new Date(`${year}-${month}-${day}T00:00:00+07:00`)
+    const endOfTodayWIB = new Date(`${year}-${month}-${day}T23:59:59.999+07:00`)
+
+    // FIX #1: todayWIB digunakan untuk filter reminder_logs (bukan UTC split)
+    const todayWIB = `${year}-${month}-${day}`
+
+    console.log(`[Cron] Running at: ${now.toISOString()}`)
+    console.log(`[Cron] Today WIB: ${todayWIB}`)
+    console.log(`[Cron] Start of today WIB (UTC): ${startOfTodayWIB.toISOString()}`)
+
+    // Query 1: Overdue borrow requests
+    // end_datetime < startOfTodayWIB → berarti berakhir sebelum hari ini (H+1)
     const { data: overdueRequests, error: queryError } = await supabase
       .from('borrow_requests')
       .select(`
@@ -87,36 +96,69 @@ export async function GET(request: NextRequest) {
       `)
       .eq('status', 'borrowed')
       .eq('is_permanent', false) // Skip permanent requests
-      .is('return_declared_at', null) // Only if user hasn't declared return yet
-      .lt('end_datetime', startOfTodayWIB.toISOString()) // H+1: end_datetime was before today
+      .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
+      .lt('end_datetime', startOfTodayWIB.toISOString()) // H+1: end_datetime sebelum hari ini
 
     if (queryError) {
-      console.error('Error querying overdue requests:', queryError)
+      console.error('[Cron] Error querying overdue requests:', queryError)
       return NextResponse.json({ error: 'Database query failed' }, { status: 500 })
     }
 
-    console.log(`[Cron] Found ${overdueRequests?.length || 0} overdue requests to remind`)
+    // Query 2: Due today borrow requests (Hanya untuk peminjaman lebih dari 1 hari)
+    // end_datetime >= startOfTodayWIB AND end_datetime <= endOfTodayWIB
+    const { data: dueTodayRequests, error: dueTodayQueryError } = await supabase
+      .from('borrow_requests')
+      .select(`
+        id,
+        start_datetime,
+        end_datetime,
+        usage_location,
+        borrower_name,
+        borrower_email,
+        borrow_items (
+          quantity,
+          item:items (
+            name,
+            category:categories (name)
+          )
+        )
+      `)
+      .eq('status', 'borrowed')
+      .eq('is_permanent', false) // Skip permanent requests
+      .eq('is_same_day', false) // Hanya untuk peminjaman lebih dari 1 hari
+      .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
+      .gte('end_datetime', startOfTodayWIB.toISOString())
+      .lte('end_datetime', endOfTodayWIB.toISOString())
 
-    if (!overdueRequests || overdueRequests.length === 0) {
+    if (dueTodayQueryError) {
+      console.error('[Cron] Error querying due today requests:', dueTodayQueryError)
+      return NextResponse.json({ error: 'Database query failed' }, { status: 500 })
+    }
+
+    const allRequestsToProcess = [...(overdueRequests || []), ...(dueTodayRequests || [])]
+
+    console.log(`[Cron] Found ${overdueRequests?.length || 0} overdue requests and ${dueTodayRequests?.length || 0} due today requests to evaluate`)
+
+    if (allRequestsToProcess.length === 0) {
       return NextResponse.json({
-        message: 'No overdue requests found',
+        message: 'No requests found to process',
         processed: 0,
         sent: 0,
         failed: 0,
       })
     }
 
-    // Filter out requests that already received a reminder today
-    const today = new Date().toISOString().split('T')[0]
+    // Filter: hanya kirim ke request yang belum dapat reminder hari ini (WIB)
+    // FIX #1: gunakan todayWIB + offset +07:00, bukan UTC midnight
     const requestsToRemind = []
 
-    for (const req of overdueRequests) {
+    for (const req of allRequestsToProcess) {
       const { data: todayLogs } = await supabase
         .from('reminder_logs')
         .select('id')
         .eq('request_id', req.id)
         .eq('status', 'sent')
-        .gte('sent_at', `${today}T00:00:00Z`)
+        .gte('sent_at', `${todayWIB}T00:00:00+07:00`) // FIX: pakai WIB midnight
         .limit(1)
 
       if (!todayLogs || todayLogs.length === 0) {
@@ -124,35 +166,51 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log(`[Cron] ${requestsToRemind.length} requests need reminder today`)
+
     let sentCount = 0
     let failedCount = 0
 
     for (const req of requestsToRemind) {
       try {
         const endDate = new Date(req.end_datetime)
-        const now = new Date()
-        const daysOverdue = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24))
+
+        // FIX #2: hitung daysOverdue berdasarkan hari kalender WIB, bukan selisih jam
+        // Ambil tanggal end_datetime dalam WIB
+        const endFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Jakarta',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        })
+        const [endMonth, endDay, endYear] = endFormatter.format(endDate).split('/')
+        const startOfEndDateWIB = new Date(`${endYear}-${endMonth}-${endDay}T00:00:00+07:00`)
+
+        // Selisih hari kalender (bukan jam)
+        const daysOverdue = Math.round(
+          (startOfTodayWIB.getTime() - startOfEndDateWIB.getTime()) / (1000 * 60 * 60 * 24)
+        )
 
         const userEmail = req.borrower_email
         const userName = req.borrower_name
 
         if (!userEmail) {
-          console.error(`No email for request ${req.id}`)
+          console.error(`[Cron] No email for request ${req.id}`)
           failedCount++
           continue
         }
 
-        // Format items for email
+        // Format items untuk email
         const items = (req.borrow_items as any[]).map((bi) => ({
           name: bi.item.name,
           quantity: bi.quantity,
           category: bi.item.category?.name || 'Uncategorized',
         }))
 
-        // Reuse the existing token (created at borrow time)
+        // Reuse token yang sudah ada (dibuat saat borrow)
         let token = await getReturnTokenForRequest(req.id)
 
-        // Edge case: token doesn't exist (old data), create one
+        // Edge case: token tidak ada (data lama), buat baru
         if (!token) {
           console.log(`[Cron] No token found for request ${req.id}, creating new one`)
           token = generateSecureToken()
@@ -161,7 +219,7 @@ export async function GET(request: NextRequest) {
           await createReturnToken(req.id, token, expiresAt)
         }
 
-        // Send reminder email
+        // Kirim reminder email
         const result = await sendOverdueReminderEmail(
           userEmail,
           userName,
@@ -179,15 +237,19 @@ export async function GET(request: NextRequest) {
         if (result.success) {
           await logReminderEmail(req.id, userEmail, 'sent')
           sentCount++
+          console.log(`[Cron] Reminder sent for request ${req.id} (${daysOverdue} day(s) overdue)`)
         } else {
           await logReminderEmail(req.id, userEmail, 'failed', result.error)
           failedCount++
+          console.error(`[Cron] Failed to send reminder for request ${req.id}:`, result.error)
         }
       } catch (error) {
         console.error(`[Cron] Error processing request ${req.id}:`, error)
         failedCount++
       }
     }
+
+    console.log(`[Cron] Done. Sent: ${sentCount}, Failed: ${failedCount}`)
 
     return NextResponse.json({
       message: 'Reminder emails processed',
@@ -197,7 +259,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Unexpected error in cron job:', error)
+    console.error('[Cron] Unexpected error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

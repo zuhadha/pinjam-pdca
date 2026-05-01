@@ -2,7 +2,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { revalidatePath } from 'next/cache'
-import { sendBorrowConfirmationEmail, createReturnToken } from '@/lib/email/email-service'
+import { sendBorrowConfirmationEmail, sendAdminBorrowNotificationEmail, createReturnToken } from '@/lib/email/email-service'
+import { getAdminNotificationEmails } from '@/lib/actions/settings-actions'
 import { generateSecureToken } from '@/lib/utils/token-utils'
 
 export interface BorrowRequestItem {
@@ -284,6 +285,27 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     }).catch((err) => {
       console.error('Failed to send confirmation email:', err)
     })
+
+    // Fetch admin emails and send notification with delay
+    const adminEmails = await getAdminNotificationEmails()
+    if (adminEmails.length > 0) {
+      // Await is necessary for Serverless functions, using 2s delay
+      await sendAdminBorrowNotificationEmail({
+        adminEmails,
+        borrowerName: input.borrowerName.trim(),
+        borrowerEmail: input.borrowerEmail.trim().toLowerCase(),
+        borrowerDivision: input.borrowerDivision.trim(),
+        items: emailItems,
+        startDatetime: startDatetime?.toISOString() || null,
+        endDatetime: endDatetime?.toISOString() || null,
+        usageLocation: input.usageLocation.trim(),
+        purpose: input.purpose,
+        isPermanent: input.isPermanent,
+        requestId: borrowRequest.id,
+      }, 2000).catch((err) => {
+        console.error('Failed to send admin notification emails:', err)
+      })
+    }
 
     revalidatePath('/catalog')
     revalidatePath('/admin')

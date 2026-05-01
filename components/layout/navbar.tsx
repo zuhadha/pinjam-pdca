@@ -57,8 +57,12 @@ export function Navbar() {
   const isCatalogPage = pathname.startsWith('/catalog')
   const isLoginPage = pathname === '/login'
   const isAdminPage = pathname.startsWith('/admin')
+  const isSuccessOrErrorPage = 
+    pathname === '/return-success' || 
+    pathname === '/borrow-success' || 
+    pathname === '/return-error'
 
-  if (isLoginPage || isAdminPage) return null
+  if (isLoginPage || isAdminPage || isSuccessOrErrorPage) return null
 
   return (
     <nav className={`sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm ${isCatalogPage ? 'hidden lg:block' : ''}`}>
@@ -117,13 +121,7 @@ export function Navbar() {
                   <LogOut className="h-5 w-5" />
                 </Button>
               </div>
-            ) : (
-              <Link href="/login">
-                <Button variant="primary" size="sm">
-                  Login
-                </Button>
-              </Link>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile menu button */}
@@ -175,8 +173,8 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-gray-200">
-              {user ? (
+            {user && (
+              <div className="pt-3 border-t border-gray-200">
                 <div className="space-y-2">
                   <div className="px-3 py-2">
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -190,14 +188,8 @@ export function Navbar() {
                     Logout
                   </Button>
                 </div>
-              ) : (
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="primary" className="w-full">
-                    Login
-                  </Button>
-                </Link>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}

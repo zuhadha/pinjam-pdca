@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { XCircle } from 'lucide-react'
+import { XCircle, AlertTriangle } from 'lucide-react'
+import Image from 'next/image'
 
 const errorMessages: Record<string, { title: string; message: string }> = {
   missing_token: {
@@ -32,49 +33,69 @@ const errorMessages: Record<string, { title: string; message: string }> = {
   },
 }
 
-export default function ReturnErrorPage({
+export default async function ReturnErrorPage({
   searchParams,
 }: {
-  searchParams: { reason?: string }
+  searchParams: Promise<{ reason?: string }>
 }) {
-  const reason = searchParams.reason || 'unexpected_error'
+  const params = await searchParams
+  const reason = params.reason || 'unexpected_error'
   const errorInfo = errorMessages[reason] || errorMessages.unexpected_error
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 overflow-hidden px-4">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <Image
+          src="/bg-login.webp"
+          alt="Background"
+          fill
+          className="object-cover blur-[8px] scale-105 opacity-60"
+          priority
+        />
+        <div className="absolute inset-0 bg-black/20" /> {/* subtle overlay */}
+      </div>
+
+      <div className="w-full max-w-md px-8 py-10 rounded-3xl bg-white backdrop-blur-xl shadow-2xl z-10 mx-4 border border-white/20 text-center">
         <div className="flex justify-center mb-6">
-          <XCircle className="w-20 h-20 text-red-500" />
+          <div className="bg-red-50 rounded-full p-4">
+            <XCircle className="w-16 h-16 text-red-500" />
+          </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">{errorInfo.title}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-3">{errorInfo.title}</h1>
 
-        <p className="text-gray-600 mb-6">{errorInfo.message}</p>
+        <p className="text-gray-600 mb-6 text-sm leading-relaxed">{errorInfo.message}</p>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-yellow-800">
-            <strong>Butuh Bantuan?</strong>
-            <br />
-            Hubungi admin untuk mendapatkan bantuan terkait konfirmasi pengembalian barang Anda.
-          </p>
+        <div className="bg-amber-50/80 backdrop-blur-sm border border-amber-200 rounded-xl p-4 mb-8 text-left">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900 mb-1">Butuh Bantuan?</p>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Hubungi admin untuk mendapatkan bantuan terkait konfirmasi pengembalian barang Anda.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3">
           <Link
-            href="/dashboard"
-            className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            href="/catalog"
+            className="block w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-transform active:scale-95"
           >
-            Lihat Dashboard
+            Kembali ke Katalog
           </Link>
 
           <Link
-            href="/catalog"
-            className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+            href="/"
+            className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-colors text-sm"
           >
-            Kembali ke Katalog
+            Halaman Beranda
           </Link>
         </div>
       </div>
     </div>
   )
 }
+

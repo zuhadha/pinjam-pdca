@@ -37,9 +37,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-gray-900 overflow-hidden relative">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 overflow-hidden">
       {/* Background Image with Blur */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <Image
           src="/bg-login.webp"
           alt="Background"

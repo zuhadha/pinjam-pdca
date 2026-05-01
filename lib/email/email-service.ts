@@ -3,6 +3,7 @@
 import { render } from '@react-email/components'
 import OverdueReminderEmail from './templates/overdue-reminder-email'
 import BorrowConfirmationEmail from './templates/borrow-confirmation-email'
+import AdminBorrowNotificationEmail from './templates/admin-borrow-notification-email'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 // ─── Brevo API config ────────────────────────────────────────────────────────
@@ -77,6 +78,25 @@ export interface SendReminderEmailResult {
   success: boolean
   messageId?: string
   error?: string
+}
+
+export interface AdminBorrowNotificationParams {
+  adminEmails: string[]       // List of admin emails to notify
+  borrowerName: string
+  borrowerEmail: string
+  borrowerDivision: string
+  items: BorrowItemData[]
+  startDatetime: string | null
+  endDatetime: string | null
+  usageLocation: string
+  purpose: string
+  isPermanent: boolean
+  requestId: string
+}
+
+/** Helper: pause execution for `ms` milliseconds */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // ─── Email senders ────────────────────────────────────────────────────────────
@@ -194,7 +214,7 @@ export async function sendOverdueReminderEmail(
     const subject =
       borrowRequest.daysOverdue > 0
         ? `⚠️ Peringatan: Pengembalian Barang Terlambat ${borrowRequest.daysOverdue} Hari`
-        : `ℹ️ Pengingat: Status Barang Sedang Dipinjam`
+        : `ℹ️ Pengingat: Batas Waktu Pengembalian Barang Hari Ini`
 
     const messageId = await sendEmail(userEmail, subject, emailHtml)
 
@@ -206,6 +226,83 @@ export async function sendOverdueReminderEmail(
       error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
+}
+
+/**
+ * Send borrow notification email to all admin emails.
+ * Adds a configurable delay before each send to avoid spam flags.
+ * Should be called AFTER sendBorrowConfirmationEmail.
+ *
+ * @param delayMs - milliseconds to wait before sending (default 5000 = 5s)
+ */
+export async function sendAdminBorrowNotificationEmail(
+  params: AdminBorrowNotificationParams,
+  delayMs = 5000
+): Promise<SendReminderEmailResult[]> {
+  if (!params.adminEmails || params.adminEmails.length === 0) {
+    console.log('[Email] No admin notification emails configured, skipping.')
+    return []
+  }
+
+  const formatDate = (dt: string | null) => {
+    if (!dt) return '-'
+    return new Date(dt).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const subject = params.isPermanent
+    ? `[INVENSA] Permintaan Barang Baru — ${params.borrowerName} (${params.borrowerDivision})`
+    : `[INVENSA] Peminjaman Barang Baru — ${params.borrowerName} (${params.borrowerDivision})`
+
+  const results: SendReminderEmailResult[] = []
+
+  for (let i = 0; i < params.adminEmails.length; i++) {
+    const adminEmail = params.adminEmails[i]
+
+    try {
+      // Add delay before each admin email to reduce spam risk
+      if (i === 0) {
+        console.log(`[Email] Waiting ${delayMs}ms before sending admin notification...`)
+        await delay(delayMs)
+      } else {
+        // Small gap between multiple admin recipients
+        await delay(1500)
+      }
+
+      const emailHtml = await render(
+        AdminBorrowNotificationEmail({
+          borrowerName: params.borrowerName,
+          borrowerEmail: params.borrowerEmail,
+          borrowerDivision: params.borrowerDivision,
+          items: params.items,
+          startDate: formatDate(params.startDatetime),
+          endDate: formatDate(params.endDatetime),
+          usageLocation: params.usageLocation,
+          purpose: params.purpose,
+          isPermanent: params.isPermanent,
+          requestId: params.requestId,
+        })
+      )
+
+      console.log(`[Email] Sending admin notification to: ${adminEmail}`)
+      const messageId = await sendEmail(adminEmail, subject, emailHtml)
+      results.push({ success: true, messageId })
+    } catch (error) {
+      console.error(`[Email] Failed to send admin notification to ${adminEmail}:`, error)
+      results.push({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }
+
+  return results
 }
 
 // ─── Database helpers (unchanged) ─────────────────────────────────────────────

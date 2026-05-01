@@ -186,16 +186,16 @@ export function CartCheckoutForm() {
             setLoading(false)
             return
           }
-          startDatetime = `${date}T${startTime}:00`
-          endDatetime = `${date}T${endTime}:00`
+          startDatetime = `${date}T${startTime}:00+07:00`
+          endDatetime = `${date}T${endTime}:00+07:00`
         } else {
           if (!startDate || !endDate) {
             setError('Tanggal mulai dan selesai harus diisi')
             setLoading(false)
             return
           }
-          startDatetime = `${startDate}T08:00:00`
-          endDatetime = `${endDate}T17:00:00`
+          startDatetime = `${startDate}T08:00:00+07:00`
+          endDatetime = `${endDate}T17:00:00+07:00`
         }
 
         if (!usageLocation.trim()) {

@@ -265,9 +265,14 @@ export default async function HomePage() {
             <p className="text-gray-400 mb-4">
               © 2025 <strong>INVENSA</strong>. Dibuat dengan ❤️ oleh Tim PDCA BUE.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mb-6">
               Kelola peminjaman barang kantor dengan mudah dan terorganisir
             </p>
+            {!user && (
+              <a href="/login" className="inline-block text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                Admin Login
+              </a>
+            )}
           </div>
         </div>
       </footer>

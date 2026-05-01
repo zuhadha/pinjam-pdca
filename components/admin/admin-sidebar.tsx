@@ -214,8 +214,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
           {/* User Footer */}
           <div className="p-3 border-t border-gray-100">
-             <div className={`p-2 rounded-xl transition-all duration-300 ${isCollapsed ? 'flex justify-center' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                <div className="flex items-center gap-3 overflow-hidden">
+             <div className={`p-2 rounded-xl transition-all duration-300 ${isCollapsed ? 'flex flex-col items-center' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                <Link 
+                  href="/admin/settings"
+                  title="Pengaturan"
+                  className={`flex items-center gap-3 overflow-hidden rounded-lg hover:bg-gray-50 transition-colors ${isCollapsed ? 'justify-center p-0' : 'p-1'}`}
+                >
                    <div className="min-w-[40px] h-10 bg-primary-50 text-primary-700 rounded-lg flex items-center justify-center font-bold flex-shrink-0">
                       {user.name.charAt(0).toUpperCase()}
                    </div>
@@ -226,7 +230,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                       <p className="font-bold text-gray-900 text-xs truncate">{user.name}</p>
                       <p className="text-[10px] text-gray-500 uppercase font-semibold">Admin</p>
                    </div>
-                </div>
+                </Link>
                 {!isCollapsed && (
                    <button
                     onClick={handleLogout}

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle, Mail, Package, ArrowLeft, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 interface BorrowSuccessPageProps {
   searchParams: Promise<{
@@ -27,9 +28,21 @@ export default async function BorrowSuccessPage({ searchParams }: BorrowSuccessP
   const itemTypeLabel = itemCount > 1 ? `${itemCount} jenis barang` : '1 barang'
 
   return (
-    <div className="h-[calc(100vh-80px)] bg-gray-50 flex items-center justify-center p-4 overflow-auto">
-      <div className="w-full max-w-3xl py-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 overflow-hidden px-4">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <Image
+          src="/bg-login.webp"
+          alt="Background"
+          fill
+          className="object-cover blur-[8px] scale-105 opacity-60"
+          priority
+        />
+        <div className="absolute inset-0 bg-black/20" /> {/* subtle overlay */}
+      </div>
+
+      <div className="w-full max-w-3xl bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl z-10 overflow-hidden border border-white/20">
+        <div className="max-h-[90vh] overflow-auto">
           {/* Header Banner */}
           <div className={`${headerColor} px-6 py-6 flex items-center gap-4`}>
             <div className="bg-white/20 rounded-full p-3 flex-shrink-0">
@@ -60,7 +73,7 @@ export default async function BorrowSuccessPage({ searchParams }: BorrowSuccessP
               </div>
 
               {/* Email info */}
-              <div className={`rounded-xl p-4 border ${isRequest ? 'bg-blue-50 border-blue-100' : 'bg-green-50 border-green-100'}`}>
+              <div className={`rounded-xl p-4 border ${isRequest ? 'bg-blue-50/80 border-blue-100' : 'bg-green-50/80 border-green-100'}`}>
                 <div className="flex items-start gap-3">
                   <Mail className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isRequest ? 'text-blue-600' : 'text-green-700'}`} />
                   <div>
@@ -162,7 +175,7 @@ export default async function BorrowSuccessPage({ searchParams }: BorrowSuccessP
 
               {/* CTA */}
               <Link href="/catalog">
-                <Button variant="outline" className="w-full gap-2" size="sm">
+                <Button variant="outline" className="w-full gap-2 rounded-xl" size="sm">
                   <ArrowLeft className="h-4 w-4" />
                   Kembali ke Katalog
                 </Button>
@@ -174,3 +187,4 @@ export default async function BorrowSuccessPage({ searchParams }: BorrowSuccessP
     </div>
   )
 }
+

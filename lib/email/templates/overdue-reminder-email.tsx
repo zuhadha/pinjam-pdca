@@ -40,7 +40,7 @@ export const OverdueReminderEmail = ({
   returnUrl = 'https://example.com',
 }: OverdueReminderEmailProps) => {
   const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
-  const logoUrl = `${appUrl}/logo-invensa.png`
+  const logoUrl = 'https://drive.google.com/uc?export=view&id=1VLKTrJkUUIT15YTU_cXpu8zpozAMO26f'
 
   return (
     <Html>
@@ -48,7 +48,7 @@ export const OverdueReminderEmail = ({
       <Preview>
         {daysOverdue > 0 
           ? `Peringatan: Pengembalian barang terlambat ${daysOverdue.toString()} hari` 
-          : `Pengingat: Jangan lupa kembalikan barang tepat waktu`}
+          : `Pengingat: Waktu pengembalian barang Anda adalah hari ini`}
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -78,7 +78,7 @@ export const OverdueReminderEmail = ({
             ) : (
               <Text style={text}>
                 Email ini adalah pengingat otomatis bahwa Anda saat ini sedang meminjam barang dari INVENSA yang 
-                jatuh tempo dalam <strong>{Math.abs(daysOverdue)} hari</strong>.
+                waktu pengembaliannya adalah <strong>hari ini</strong>.
               </Text>
             )}
           </Section>
