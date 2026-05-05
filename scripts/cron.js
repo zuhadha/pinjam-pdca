@@ -50,7 +50,7 @@ async function triggerCron() {
 let lastRunDate = null;
 
 console.log('====================================================');
-console.log('[Cron] Worker berjalan (Tanpa Admin).');
+console.log('[Cron] Worker berjalan.');
 console.log('[Cron] Menunggu pukul 09:00 setiap harinya...');
 console.log('====================================================');
 
