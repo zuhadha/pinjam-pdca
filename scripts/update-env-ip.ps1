@@ -67,4 +67,4 @@ $projectRoot = [System.IO.Path]::GetFullPath("$PSScriptRoot\..")
 $env:NODE_OPTIONS = "--max-old-space-size=4096"
 
 Set-Location $projectRoot
-& npx concurrently --kill-others --names "NEXT,CRON" --prefix-colors "blue,yellow" "node node_modules/next/dist/bin/next dev --hostname $ip --port $port" "node scripts/cron.js"
+& ".\node_modules\.bin\concurrently.cmd" --kill-others --names "NEXT,CRON" --prefix-colors "blue,yellow" "node node_modules/next/dist/bin/next dev --hostname $ip --port $port" "node scripts/cron.js"
