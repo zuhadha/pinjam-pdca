@@ -14,7 +14,7 @@ async function triggerCron() {
         let appUrl = '';
         let cronSecret = '';
 
-        envContent.split('\n').forEach(line => {
+        envContent.split(/\r?\n/).forEach(line => {
             const matchUrl = line.match(/^APP_URL=(.*)$/);
             if (matchUrl) appUrl = matchUrl[1].replace(/^"|"$/g, '').trim();
             
@@ -60,7 +60,7 @@ setInterval(() => {
     const currentDate = now.toLocaleDateString();
 
     // Jalankan hanya jika jam menunjukkan 09:00 dan belum pernah jalan di hari ini
-    if (now.getHours() === 9 && now.getMinutes() === 0) {
+    if (now.getHours() === 15 && now.getMinutes() === 20) {
         if (lastRunDate !== currentDate) {
             lastRunDate = currentDate;
             triggerCron();
