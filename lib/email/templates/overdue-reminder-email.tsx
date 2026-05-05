@@ -40,7 +40,7 @@ export const OverdueReminderEmail = ({
   returnUrl = 'https://example.com',
 }: OverdueReminderEmailProps) => {
   const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
-  const logoUrl = 'https://drive.google.com/uc?export=view&id=1VLKTrJkUUIT15YTU_cXpu8zpozAMO26f'
+  const logoUrl = `${appUrl}/logo-email.png`
 
   return (
     <Html>
