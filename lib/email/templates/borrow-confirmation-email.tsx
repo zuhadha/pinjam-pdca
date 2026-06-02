@@ -58,14 +58,14 @@ export const BorrowConfirmationEmail = ({
         <Container style={container}>
           {/* Header with logo */}
           <Section style={header}>
-            <Section style={logoWrapper}>
+            {/* <Section style={logoWrapper}>
               <Img
                 src={logoUrl}
                 alt="INVENSA"
                 width="140"
                 style={logoStyle}
               />
-            </Section>
+            </Section> */}
             <Heading style={h1}>
               {isPermanent ? 'Permintaan Barang Berhasil' : 'Peminjaman Barang Berhasil'}
             </Heading>

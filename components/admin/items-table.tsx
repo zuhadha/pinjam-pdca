@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -27,8 +26,26 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
 
+interface AdminItem {
+  id: string
+  name: string
+  description?: string | null
+  location?: string | null
+  category_id?: string | null
+  category?: {
+    id: string
+    name: string
+  } | null
+  is_borrowable?: boolean | null
+  stock_total: number
+  stock_available: number
+  images?: Array<{
+    image_url: string
+  }> | null
+}
+
 interface ItemsTableProps {
-  items: any[]
+  items: AdminItem[]
 }
 
 export function ItemsTable({ items }: ItemsTableProps) {
@@ -44,6 +61,26 @@ export function ItemsTable({ items }: ItemsTableProps) {
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  const updateSearchQuery = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+  }
+
+  const updateCategoryFilter = (value: string) => {
+    setCategoryFilter(value)
+    setCurrentPage(1)
+  }
+
+  const updateTypeFilter = (value: string) => {
+    setTypeFilter(value)
+    setCurrentPage(1)
+  }
+
+  const updateLocationFilter = (value: string) => {
+    setLocationFilter(value)
+    setCurrentPage(1)
+  }
 
   const handleDeleteClick = (itemId: string, itemName: string) => {
     setDeleteDialog({ open: true, itemId, itemName })
@@ -106,11 +143,6 @@ export function ItemsTable({ items }: ItemsTableProps) {
     currentPage * itemsPerPage
   )
 
-  // Reset to page 1 when filters change
-  useMemo(() => {
-    setCurrentPage(1)
-  }, [searchQuery, categoryFilter, typeFilter, locationFilter])
-
   // Get unique categories from items
   const categories = useMemo(() => {
     const categoryMap = new Map()
@@ -140,10 +172,10 @@ export function ItemsTable({ items }: ItemsTableProps) {
         <Input
           placeholder="Cari nama, deskripsi, atau lokasi..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => updateSearchQuery(e.target.value)}
           className="h-auto leading-none text-sm sm:max-w-xs"
         />
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={updateCategoryFilter}>
           <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Semua Kategori" />
           </SelectTrigger>
@@ -154,7 +186,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter} onValueChange={updateTypeFilter}>
           <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Semua Tipe" />
           </SelectTrigger>
@@ -164,7 +196,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
             <SelectItem value="requestable">Permintaan</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
+        <Select value={locationFilter} onValueChange={updateLocationFilter}>
           <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Semua Lokasi" />
           </SelectTrigger>
@@ -210,10 +242,13 @@ export function ItemsTable({ items }: ItemsTableProps) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedItems.map((item) => {
-                  const stockPercentage = item.stock_total > 0 
+                  const isBorrowable = item.is_borrowable ?? true
+                  const stockCount = isBorrowable ? item.stock_available : item.stock_total
+                  const stockPercentage = isBorrowable && item.stock_total > 0
                     ? (item.stock_available / item.stock_total) * 100 
                     : 0
-                  const isLowStock = stockPercentage < 20 && item.stock_total > 0
+                  const isOutOfStock = stockCount === 0
+                  const isLowStock = isBorrowable && stockPercentage < 20 && item.stock_total > 0
 
                   return (
                     <tr key={item.id} className="hover:bg-gray-50">
@@ -254,13 +289,13 @@ export function ItemsTable({ items }: ItemsTableProps) {
                       </td>
                       <td className="px-3 py-4 text-sm">
                         <div className="flex flex-col gap-1">
-                          <span className={`font-medium ${item.stock_available === 0 ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-900'}`}>
-                            {item.stock_available}/{item.stock_total}
+                          <span className={`font-medium ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-gray-900'}`}>
+                            {isBorrowable ? `${item.stock_available}/${item.stock_total}` : item.stock_total}
                           </span>
-                          {item.stock_available === 0 && (
+                          {isOutOfStock && (
                             <span className="text-xs text-red-600">Habis</span>
                           )}
-                          {isLowStock && item.stock_available > 0 && (
+                          {isLowStock && !isOutOfStock && (
                             <span className="text-xs text-yellow-600">Rendah</span>
                           )}
                         </div>

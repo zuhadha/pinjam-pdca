@@ -33,6 +33,15 @@ export interface CreateBorrowRequestInput {
   notes?: string
 }
 
+function getCategoryName(category: unknown) {
+  if (category && typeof category === 'object' && 'name' in category) {
+    const name = (category as { name?: unknown }).name
+    return typeof name === 'string' ? name : 'Uncategorized'
+  }
+
+  return 'Uncategorized'
+}
+
 export async function createBorrowRequest(input: CreateBorrowRequestInput) {
   // Use service role client to bypass RLS (anonymous requests allowed)
   const supabase = createServiceRoleClient()
@@ -106,6 +115,7 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       .select(`
         id, 
         name, 
+        stock_total,
         stock_available, 
         is_borrowable,
         category:categories(name),
@@ -122,6 +132,14 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       const item = items?.find((i) => i.id === requestItem.itemId)
       if (!item) {
         return { error: 'Barang tidak ditemukan' }
+      }
+
+      if (input.isPermanent && item.is_borrowable) {
+        return { error: `${item.name} adalah barang pinjaman dan tidak bisa diminta permanen` }
+      }
+
+      if (!input.isPermanent && !item.is_borrowable) {
+        return { error: `${item.name} adalah barang permintaan dan tidak bisa dipinjam sementara` }
       }
       
       // Validation: Borrowable items with units MUST have selection
@@ -219,26 +237,29 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     }
 
     // In cases where user requested quantity manually but didn't select units
-    // (legacy or items without units), items.stock_available must still decrease.
-    // However, the new system syncs items stock from item_units triggers exclusively.
-    // Wait! If the system exclusively uses triggers, how do legacy items decrement?
-    // We should probably check if the item HAS units. If it doesn't, we can fallback to manual decrement.
+    // (requestable/permanent items or legacy items without units), update item stock directly.
     for (const requestItem of input.items) {
       const dbItem = items?.find((i) => i.id === requestItem.itemId)
       if (dbItem) {
-        // Did they select units for ALL the requested quantity?
         const selectedCount = requestItem.selectedUnits?.length || 0
-        if (selectedCount < requestItem.quantity) {
-          // Manually decrement the remainder from the items table since there are no unit codes applied
-          const newStock = dbItem.stock_available - (requestItem.quantity - selectedCount)
-          const { error: stockError } = await supabase
-            .from('items')
-            .update({ stock_available: newStock })
-            .eq('id', dbItem.id)
+        const quantityToDecrement = requestItem.quantity - selectedCount
 
-          if (stockError) {
-            console.error('Failed to update stock for item:', dbItem.id, stockError)
-          }
+        if (quantityToDecrement <= 0) {
+          continue
+        }
+
+        const newStock = dbItem.stock_available - quantityToDecrement
+        const stockUpdate = input.isPermanent && !dbItem.is_borrowable
+          ? { stock_total: newStock, stock_available: newStock }
+          : { stock_available: newStock }
+
+        const { error: stockError } = await supabase
+          .from('items')
+          .update(stockUpdate)
+          .eq('id', dbItem.id)
+
+        if (stockError) {
+          console.error('Failed to update stock for item:', dbItem.id, stockError)
         }
       }
     }
@@ -266,7 +287,7 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       return {
         name: item?.name || 'Barang',
         quantity: ri.quantity,
-        category: (item?.category as any)?.name || 'Uncategorized',
+        category: getCategoryName(item?.category),
       }
     })
 
@@ -310,6 +331,8 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     revalidatePath('/catalog')
     revalidatePath('/admin')
     revalidatePath('/admin/requests')
+    revalidatePath('/admin/permanent-requests')
+    revalidatePath('/admin/items')
 
     return {
       success: true,
