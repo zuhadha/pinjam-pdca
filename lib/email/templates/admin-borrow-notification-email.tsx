@@ -58,14 +58,14 @@ export const AdminBorrowNotificationEmail = ({
         <Container style={container}>
           {/* Header */}
           <Section style={header}>
-            <Section style={logoWrapper}>
+            {/* <Section style={logoWrapper}>
               <Img
                 src={logoUrl}
                 alt="INVENSA"
                 width="140"
                 style={logoStyle}
               />
-            </Section>
+            </Section> */}
             <Heading style={h1}>
               {isPermanent ? '📦 Permintaan Barang Baru' : '📋 Peminjaman Barang Baru'}
             </Heading>
