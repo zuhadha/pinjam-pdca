@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -17,15 +16,13 @@ import {
   Legend,
 } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b']
 const PUNCTUALITY_COLORS = ['#10b981', '#ef4444'] // Green for On-Time, Red for Late
 
 interface DashboardChartsProps {
+  periodLabel: string
   trendData: { date: string; total: number }[]
-  trend30DaysData: { date: string; total: number }[]
-  monthlyTrendData: { date: string; total: number }[]
   categoryData: { name: string; value: number }[]
   topItemsData: { name: string; value: number }[]
   deptData: { name: string; value: number }[]
@@ -33,21 +30,13 @@ interface DashboardChartsProps {
 }
 
 export function DashboardCharts({
+  periodLabel,
   trendData,
-  trend30DaysData,
-  monthlyTrendData,
   categoryData,
   topItemsData,
   deptData,
   punctualityData,
 }: DashboardChartsProps) {
-  const [trendTab, setTrendTab] = useState<'7days' | '30days' | '6months'>('7days')
-
-  const getActiveTrendData = () => {
-    if (trendTab === '7days') return trendData
-    if (trendTab === '30days') return trend30DaysData
-    return monthlyTrendData
-  }
 
   return (
     <div className="flex flex-col gap-6 mt-8">
@@ -55,23 +44,14 @@ export function DashboardCharts({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 1. Trend Peminjaman (Area Chart with Gradient) */}
         <Card className="col-span-1 lg:col-span-2">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-lg font-semibold text-gray-800">Tren Peminjaman</CardTitle>
-              <CardDescription>Intensitas peminjaman dari waktu ke waktu</CardDescription>
-            </div>
-            <Tabs defaultValue="7days" className="mt-2 sm:mt-0" onValueChange={(val: any) => setTrendTab(val)}>
-              <TabsList className="h-9 w-fit p-1 bg-gray-100">
-                <TabsTrigger value="7days" className="text-xs px-3">7 Hari</TabsTrigger>
-                <TabsTrigger value="30days" className="text-xs px-3">30 Hari</TabsTrigger>
-                <TabsTrigger value="6months" className="text-xs px-3">6 Bulan</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-semibold text-gray-800">Tren Peminjaman</CardTitle>
+            <CardDescription>Intensitas peminjaman dari waktu ke waktu</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={getActiveTrendData()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -106,7 +86,7 @@ export function DashboardCharts({
             <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
               🏆 Top 3 Barang
             </CardTitle>
-            <CardDescription>Barang terlaris bulan ini</CardDescription>
+            <CardDescription>Barang terlaris {periodLabel}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4 mt-2">

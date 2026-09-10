@@ -6,8 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
+import { MonthFilter } from '@/components/admin/month-filter'
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string; year?: string }>
+}) {
+  const params = await searchParams
+  const selectedMonth = params.month ? parseInt(params.month) : null
+  const selectedYear = params.year ? parseInt(params.year) : new Date().getFullYear()
+
+  const monthLabels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+  const periodLabel = selectedMonth
+    ? `${monthLabels[selectedMonth - 1]} ${selectedYear}`
+    : `Tahun ${selectedYear}`
+
   const stats = await getAdminStats()
   const recentRequests = await getAllBorrowRequests({})
 
@@ -15,52 +29,47 @@ export default async function AdminDashboardPage() {
     return <div>Error loading dashboard</div>
   }
 
+  // Filter requests by selected month/year
+  const filteredRequests = selectedMonth
+    ? recentRequests.filter((r: any) => {
+        const d = new Date(r.created_at)
+        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
+      })
+    : recentRequests.filter((r: any) => new Date(r.created_at).getFullYear() === selectedYear)
+
   const recentRequestsLimited = recentRequests.slice(0, 5)
 
   // -- Data Aggregation for Charts --
-  
-  // 1a. Trend Peminjaman (7 Hari Terakhir)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    return format(d, 'MMM dd')
-  })
-  const trendData = last7Days.map(dateStr => {
-    return {
-      date: dateStr,
-      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM dd') === dateStr).length
-    }
-  })
+  const chartData = filteredRequests
 
-  // 1b. Trend 30 Hari
-  const last30Days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (29 - i))
-    return format(d, 'MMM dd')
-  })
-  const trend30DaysData = last30Days.map(dateStr => {
-    return {
-      date: dateStr,
-      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM dd') === dateStr).length
-    }
-  })
-
-  // 1c. Trend 6 Bulan
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date()
-    d.setMonth(d.getMonth() - (5 - i))
-    return format(d, 'MMM yyyy')
-  })
-  const monthlyTrendData = last6Months.map(monthStr => {
-    return {
-      date: monthStr,
-      total: recentRequests.filter((r: any) => format(new Date(r.created_at), 'MMM yyyy') === monthStr).length
-    }
-  })
+  // 1. Tren Peminjaman — mengikuti filter bulan/tahun
+  // Jika semua bulan dipilih: tampilkan per bulan (Jan–Des). Jika bulan spesifik dipilih: tampilkan per tanggal.
+  const trendData = selectedMonth
+    ? Array.from({ length: 31 }, (_, i) => {
+        const day = i + 1
+        const dateStr = String(day).padStart(2, '0')
+        return {
+          date: dateStr,
+          total: chartData.filter((r: any) => {
+            const d = new Date(r.created_at)
+            return d.getDate() === day
+          }).length
+        }
+      })
+    : Array.from({ length: 12 }, (_, i) => {
+        const monthLabel = monthLabels[i].slice(0, 3)
+        return {
+          date: monthLabel,
+          total: chartData.filter((r: any) => {
+            const d = new Date(r.created_at)
+            return d.getMonth() === i
+          }).length
+        }
+      })
 
   // 2. Kategori Terbanyak
   const categoryMap = new Map<string, number>()
-  recentRequests.forEach((req: any) => {
+  chartData.forEach((req: any) => {
     req.borrow_items?.forEach((bi: any) => {
       const catName = bi.item?.category?.name || 'Lainnya'
       categoryMap.set(catName, (categoryMap.get(catName) || 0) + bi.quantity)
@@ -73,7 +82,7 @@ export default async function AdminDashboardPage() {
 
   // 3. Top 3 Barang
   const itemMap = new Map<string, number>()
-  recentRequests.forEach((req: any) => {
+  chartData.forEach((req: any) => {
     req.borrow_items?.forEach((bi: any) => {
       const itemName = bi.item?.name || 'Barang Tidak Dikenal'
       itemMap.set(itemName, (itemMap.get(itemName) || 0) + bi.quantity)
@@ -86,7 +95,7 @@ export default async function AdminDashboardPage() {
 
   // 4. Departemen Paling Aktif
   const deptMap = new Map<string, number>()
-  recentRequests.forEach((req: any) => {
+  chartData.forEach((req: any) => {
     const dept = req.borrower_division || 'Lainnya'
     deptMap.set(dept, (deptMap.get(dept) || 0) + 1)
   })
@@ -98,7 +107,7 @@ export default async function AdminDashboardPage() {
   // 5. Ketepatan Waktu Pengembalian
   let onTime = 0
   let late = 0
-  recentRequests.forEach((req: any) => {
+  chartData.forEach((req: any) => {
     if (req.return_verified_at && req.end_datetime) {
       const returnDate = new Date(req.return_verified_at)
       const endDate = new Date(req.end_datetime)
@@ -132,9 +141,12 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
-        <p className="text-gray-600 mt-2">Selamat datang di panel administrasi sistem peminjaman barang</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
+          <p className="text-gray-600 mt-2">Selamat datang di panel administrasi sistem peminjaman barang</p>
+        </div>
+        <MonthFilter />
       </div>
 
       {/* Stats Cards */}
@@ -204,9 +216,8 @@ export default async function AdminDashboardPage() {
 
       {/* Dashboard Charts */}
       <DashboardCharts
+        periodLabel={periodLabel}
         trendData={trendData}
-        trend30DaysData={trend30DaysData}
-        monthlyTrendData={monthlyTrendData}
         categoryData={categoryData}
         topItemsData={topItemsData}
         deptData={deptData}
