@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "powershell -ExecutionPolicy Bypass -File scripts/update-env-ip.ps1",
+    "dev": "node scripts/update-env-ip.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
