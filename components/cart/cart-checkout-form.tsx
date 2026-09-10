@@ -18,6 +18,12 @@ import {
 import { Calendar, Clock, MapPin, User, Mail, Building2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
+const TIME_OPTIONS = Array.from({ length: 19 }, (_, i) => {
+  const h = Math.floor(i / 2 + 8)
+  const m = i % 2 === 0 ? '00' : '30'
+  return `${String(h).padStart(2, '0')}:${m}`
+})
+
 const DIVISIONS = [
   'QA',
   'QC',
@@ -371,23 +377,29 @@ export function CartCheckoutForm() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-y-2">
                     <Label htmlFor="start-time">Waktu Mulai *</Label>
-                    <Input
-                      id="start-time"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      required
-                    />
+                    <Select value={startTime} onValueChange={setStartTime}>
+                      <SelectTrigger id="start-time">
+                        <SelectValue placeholder="Pilih waktu mulai" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_OPTIONS.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex flex-col gap-y-2">
                     <Label htmlFor="end-time">Waktu Selesai *</Label>
-                    <Input
-                      id="end-time"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      required
-                    />
+                    <Select value={endTime} onValueChange={setEndTime}>
+                      <SelectTrigger id="end-time">
+                        <SelectValue placeholder="Pilih waktu selesai" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_OPTIONS.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

@@ -27,6 +27,12 @@ interface BorrowModalProps {
   onClose: () => void
 }
 
+const TIME_OPTIONS = Array.from({ length: 19 }, (_, i) => {
+  const h = Math.floor(i / 2 + 8)
+  const m = i % 2 === 0 ? '00' : '30'
+  return `${String(h).padStart(2, '0')}:${m}`
+})
+
 const DIVISIONS = [
   'QA',
   'QC',
@@ -514,25 +520,29 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                   </div>
                   <div>
                     <Label htmlFor="startTime" className="mb-1 block text-gray-700">Mulai *</Label>
-                    <Input
-                      className='text-sm'
-                      id="startTime"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      required
-                    />
+                    <Select value={startTime} onValueChange={setStartTime}>
+                      <SelectTrigger id="startTime" className="text-sm">
+                        <SelectValue placeholder="Mulai" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_OPTIONS.map((t) => (
+                          <SelectItem key={t} value={t} className="text-sm">{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="endTime" className="mb-1 block text-gray-700">Selesai *</Label>
-                    <Input
-                      className='text-sm'
-                      id="endTime"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      required
-                    />
+                    <Select value={endTime} onValueChange={setEndTime}>
+                      <SelectTrigger id="endTime" className="text-sm">
+                        <SelectValue placeholder="Selesai" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_OPTIONS.map((t) => (
+                          <SelectItem key={t} value={t} className="text-sm">{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </>
