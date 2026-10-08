@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Calendar, Filter, X } from 'lucide-react'
+import { Filter, Loader2, RotateCcw } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -38,6 +38,15 @@ function readParams(paramsString: string) {
     from: p.get('from') || '',
     to: p.get('to') || '',
   }
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      {children}
+    </div>
+  )
 }
 
 export function DashboardFilter() {
@@ -110,83 +119,91 @@ function FilterForm({ paramsString }: { paramsString: string }) {
   if (!years.includes(currentYearNum)) years.push(currentYearNum)
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Calendar className="h-4 w-4 text-gray-500" />
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        {/* Year Filter */}
+        <Field label="Tahun">
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger className="h-9 w-[110px]">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((y) => (
+                <SelectItem key={y} value={y.toString()}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
 
-      {/* Year Filter */}
-      <Select value={year} onValueChange={setYear}>
-        <SelectTrigger className="w-[120px] h-9">
-          <SelectValue placeholder="Tahun" />
-        </SelectTrigger>
-        <SelectContent>
-          {years.map((y) => (
-            <SelectItem key={y} value={y.toString()}>
-              {y}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Month Filter */}
+        <Field label="Bulan">
+          <Select value={month || 'all'} onValueChange={(v) => setMonth(v === 'all' ? '' : v)}>
+            <SelectTrigger className="h-9 w-[160px]">
+              <SelectValue placeholder="Semua Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Bulan</SelectItem>
+              {MONTHS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
 
-      {/* Month Filter */}
-      <Select value={month || 'all'} onValueChange={(v) => setMonth(v === 'all' ? '' : v)}>
-        <SelectTrigger className="w-[150px] h-9">
-          <SelectValue placeholder="Semua Bulan" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Semua Bulan</SelectItem>
-          {MONTHS.map((m) => (
-            <SelectItem key={m.value} value={m.value}>
-              {m.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Date Range Filter */}
+        <Field label="Rentang Tanggal">
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              aria-label="Tanggal mulai"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 min-w-0 flex-1 px-2 text-sm sm:w-[152px] sm:flex-none"
+            />
+            <span className="shrink-0 text-sm text-gray-400">s.d.</span>
+            <Input
+              type="date"
+              aria-label="Tanggal selesai"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 min-w-0 flex-1 px-2 text-sm sm:w-[152px] sm:flex-none"
+            />
+          </div>
+        </Field>
 
-      {/* Date Range Filter */}
-      <Input
-        type="date"
-        aria-label="Tanggal mulai"
-        value={dateFrom}
-        max={dateTo || undefined}
-        onChange={(e) => setDateFrom(e.target.value)}
-        className="h-9 w-[150px] px-2 text-sm"
-      />
-      <span className="text-sm text-gray-500">—</span>
-      <Input
-        type="date"
-        aria-label="Tanggal selesai"
-        value={dateTo}
-        min={dateFrom || undefined}
-        onChange={(e) => setDateTo(e.target.value)}
-        className="h-9 w-[150px] px-2 text-sm"
-      />
-
-      {/* Apply Filter */}
-      <Button
-        size="sm"
-        onClick={handleApply}
-        disabled={!isDirty || isPending}
-        className="h-9"
-      >
-        <Filter className="h-4 w-4 mr-2" />
-        Filter
-      </Button>
-
-      {hasActiveFilter && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClear}
-          aria-label="Reset filter"
-          className="h-9 w-9 p-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
-
-      {isPending && (
-        <span className="text-xs text-gray-500">Memuat...</span>
-      )}
+        {/* Actions */}
+        <div className="ms-auto flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            disabled={(!hasActiveFilter && !isDirty) || isPending}
+            className="h-9 px-3 text-gray-600"
+          >
+            <RotateCcw className="mr-1.5 h-4 w-4" />
+            Reset
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleApply}
+            disabled={!isDirty || isPending}
+            className="h-9 px-4"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Filter className="mr-2 h-4 w-4" />
+            )}
+            Filter
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
