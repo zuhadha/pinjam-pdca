@@ -6,21 +6,46 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
-import { MonthFilter } from '@/components/admin/month-filter'
+import { DashboardFilter } from '@/components/admin/dashboard-filter'
 
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string }>
+  searchParams: Promise<{ month?: string; year?: string; from?: string; to?: string }>
 }) {
   const params = await searchParams
   const selectedMonth = params.month ? parseInt(params.month) : null
   const selectedYear = params.year ? parseInt(params.year) : new Date().getFullYear()
 
   const monthLabels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-  const periodLabel = selectedMonth
-    ? `${monthLabels[selectedMonth - 1]} ${selectedYear}`
-    : `Tahun ${selectedYear}`
+
+  // Parse tanggal lokal (bukan UTC) agar sesuai zona waktu WIB
+  const parseLocalDate = (s: string) => {
+    const [y, m, d] = s.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+  const formatID = (d: Date) => `${d.getDate()} ${monthLabels[d.getMonth()]} ${d.getFullYear()}`
+
+  const rangeActive = Boolean(params.from || params.to)
+  let rangeStart = params.from ? parseLocalDate(params.from) : null
+  let rangeEnd = params.to ? parseLocalDate(params.to) : null
+  if (rangeStart && rangeEnd && rangeStart > rangeEnd) {
+    const tmp = rangeStart
+    rangeStart = rangeEnd
+    rangeEnd = tmp
+  }
+
+  let periodLabel: string
+  if (rangeActive) {
+    const parts: string[] = []
+    if (rangeStart) parts.push(formatID(rangeStart))
+    if (rangeEnd) parts.push(formatID(rangeEnd))
+    periodLabel = parts.join(' - ')
+  } else {
+    periodLabel = selectedMonth
+      ? `${monthLabels[selectedMonth - 1]} ${selectedYear}`
+      : `Tahun ${selectedYear}`
+  }
 
   const stats = await getAdminStats()
   const recentRequests = await getAllBorrowRequests({})
@@ -29,43 +54,99 @@ export default async function AdminDashboardPage({
     return <div>Error loading dashboard</div>
   }
 
-  // Filter requests by selected month/year
-  const filteredRequests = selectedMonth
+  // Filter requests by date range, or by selected month/year
+  const filteredRequests = rangeActive
     ? recentRequests.filter((r: any) => {
         const d = new Date(r.created_at)
-        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
+        if (rangeStart && d < rangeStart) return false
+        if (rangeEnd) {
+          const endOfDay = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999)
+          if (d > endOfDay) return false
+        }
+        return true
       })
-    : recentRequests.filter((r: any) => new Date(r.created_at).getFullYear() === selectedYear)
+    : selectedMonth
+      ? recentRequests.filter((r: any) => {
+          const d = new Date(r.created_at)
+          return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
+        })
+      : recentRequests.filter((r: any) => new Date(r.created_at).getFullYear() === selectedYear)
 
   const recentRequestsLimited = recentRequests.slice(0, 5)
 
   // -- Data Aggregation for Charts --
   const chartData = filteredRequests
 
-  // 1. Tren Peminjaman — mengikuti filter bulan/tahun
-  // Jika semua bulan dipilih: tampilkan per bulan (Jan–Des). Jika bulan spesifik dipilih: tampilkan per tanggal.
-  const trendData = selectedMonth
-    ? Array.from({ length: 31 }, (_, i) => {
-        const day = i + 1
-        const dateStr = String(day).padStart(2, '0')
-        return {
-          date: dateStr,
-          total: chartData.filter((r: any) => {
-            const d = new Date(r.created_at)
-            return d.getDate() === day
-          }).length
+  // 1. Tren Peminjaman — mengikuti filter rentang tanggal / bulan / tahun
+  // Rentang tanggal: per tanggal jika <= 31 hari, selain itu per bulan.
+  // Filter bulan: tampil per tanggal (1–31). Tanpa bulan: per bulan (Jan–Des).
+  const trendData = rangeActive
+    ? (() => {
+        const times = chartData.map((r: any) => new Date(r.created_at).getTime())
+        const start = rangeStart ?? (times.length ? new Date(Math.min(...times)) : new Date())
+        const end = rangeEnd ?? (times.length ? new Date(Math.max(...times)) : new Date())
+        const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+        const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+        const dayCount = Math.round((endDay.getTime() - startDay.getTime()) / 86400000) + 1
+        const sameMonth =
+          startDay.getMonth() === endDay.getMonth() &&
+          startDay.getFullYear() === endDay.getFullYear()
+
+        if (dayCount <= 31) {
+          return Array.from({ length: dayCount }, (_, i) => {
+            const d = new Date(startDay)
+            d.setDate(d.getDate() + i)
+            return {
+              date: sameMonth ? format(d, 'dd') : format(d, 'dd/MM'),
+              total: chartData.filter((r: any) => {
+                const rd = new Date(r.created_at)
+                return (
+                  rd.getFullYear() === d.getFullYear() &&
+                  rd.getMonth() === d.getMonth() &&
+                  rd.getDate() === d.getDate()
+                )
+              }).length
+            }
+          })
         }
-      })
-    : Array.from({ length: 12 }, (_, i) => {
-        const monthLabel = monthLabels[i].slice(0, 3)
-        return {
-          date: monthLabel,
-          total: chartData.filter((r: any) => {
-            const d = new Date(r.created_at)
-            return d.getMonth() === i
-          }).length
-        }
-      })
+
+        const monthCount =
+          (endDay.getFullYear() - startDay.getFullYear()) * 12 +
+          (endDay.getMonth() - startDay.getMonth()) +
+          1
+        return Array.from({ length: monthCount }, (_, i) => {
+          const d = new Date(startDay.getFullYear(), startDay.getMonth() + i, 1)
+          return {
+            date: format(d, 'MMM'),
+            total: chartData.filter((r: any) => {
+              const rd = new Date(r.created_at)
+              return rd.getFullYear() === d.getFullYear() && rd.getMonth() === d.getMonth()
+            }).length
+          }
+        })
+      })()
+    : selectedMonth
+      ? Array.from({ length: 31 }, (_, i) => {
+          const day = i + 1
+          const dateStr = String(day).padStart(2, '0')
+          return {
+            date: dateStr,
+            total: chartData.filter((r: any) => {
+              const d = new Date(r.created_at)
+              return d.getDate() === day
+            }).length
+          }
+        })
+      : Array.from({ length: 12 }, (_, i) => {
+          const monthLabel = monthLabels[i].slice(0, 3)
+          return {
+            date: monthLabel,
+            total: chartData.filter((r: any) => {
+              const d = new Date(r.created_at)
+              return d.getMonth() === i
+            }).length
+          }
+        })
 
   // 2. Kategori Terbanyak
   const categoryMap = new Map<string, number>()
@@ -146,7 +227,7 @@ export default async function AdminDashboardPage({
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
           <p className="text-gray-600 mt-2">Selamat datang di panel administrasi sistem peminjaman barang</p>
         </div>
-        <MonthFilter />
+        <DashboardFilter />
       </div>
 
       {/* Stats Cards */}
