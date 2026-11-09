@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import * as LucideIcons from 'lucide-react'
+import { CATEGORY_ICONS, FallbackCategoryIcon } from '@/lib/category-icons'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,7 +42,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
     name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const CurrentIcon = (LucideIcons as any)[value] || LucideIcons.HelpCircle
+  const CurrentIcon = CATEGORY_ICONS[value] || FallbackCategoryIcon
 
   return (
     <div className="space-y-2 relative" ref={containerRef}>
@@ -75,7 +75,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
           
           <div className="grid grid-cols-6 gap-2 max-h-60 overflow-y-auto pr-1 pb-1">
             {filteredIcons.length > 0 ? filteredIcons.map((iconName) => {
-              const IconComp = (LucideIcons as any)[iconName]
+              const IconComp = CATEGORY_ICONS[iconName]
               if (!IconComp) return null
               return (
                 <button

@@ -31,9 +31,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { verifyReturn, assignUnitsToRequest } from '@/lib/actions/admin-actions'
+import { verifyReturn, verifyReturnsBulk, assignUnitsToRequest } from '@/lib/actions/admin-actions'
 import { CheckCircle, Tag, PlusCircle, X, Eye } from 'lucide-react'
 import { Pagination } from '@/components/ui/pagination'
+import { useSessionState } from '@/lib/hooks/use-session-state'
 
 interface RequestsTableProps {
   requests: any[]
@@ -41,10 +42,16 @@ interface RequestsTableProps {
 }
 
 export function RequestsTable({ requests, isPermanentView = false }: RequestsTableProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [usageLocationFilter, setUsageLocationFilter] = useState<string>('all')
-  const [currentPage, setCurrentPage] = useState(1)
+  // Kept in sessionStorage so filters survive navigating away and back
+  const [filters, setFilters] = useSessionState(
+    isPermanentView ? 'admin-permanent-requests-filters' : 'admin-requests-filters',
+    { search: '', status: 'all', location: 'all', page: 1 }
+  )
+  const { search: searchQuery, status: statusFilter, location: usageLocationFilter } = filters
+  const setSearchQuery = (search: string) => setFilters(prev => ({ ...prev, search, page: 1 }))
+  const setStatusFilter = (status: string) => setFilters(prev => ({ ...prev, status, page: 1 }))
+  const setUsageLocationFilter = (location: string) => setFilters(prev => ({ ...prev, location, page: 1 }))
+  const setCurrentPage = (page: number) => setFilters(prev => ({ ...prev, page }))
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -75,6 +82,9 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
   const [unitSelections, setUnitSelections] = useState<Record<string, string[]>>({})
 
   const itemsPerPage = 10
+
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const handleVerifyReturn = async () => {
     if (!confirmDialog.requestId) return
@@ -188,17 +198,13 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     })
   }, [requests, statusFilter, usageLocationFilter, searchQuery])
 
-  // Pagination
+  // Pagination (clamped in case the saved page no longer exists)
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
+  const currentPage = Math.min(Math.max(filters.page, 1), Math.max(totalPages, 1))
   const paginatedRequests = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     return filteredRequests.slice(startIndex, startIndex + itemsPerPage)
   }, [filteredRequests, currentPage])
-
-  // Reset to page 1 when filters change
-  useMemo(() => {
-    setCurrentPage(1)
-  }, [statusFilter, usageLocationFilter, searchQuery])
 
   const getStatusBadge = (request: any) => {
     const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
@@ -232,6 +238,26 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     }) && request.status === 'borrowed'
   }
 
+  // Same rule as the per-row verify button, across all filtered records (every page)
+  const verifiableRequests = filteredRequests.filter(
+    (r: any) => r.status === 'borrowed' && !r.return_verified_at && !checkNeedsAssignment(r)
+  )
+
+  const handleBulkVerify = async () => {
+    setBulkLoading(true)
+    const result = await verifyReturnsBulk(verifiableRequests.map((r: any) => r.id))
+    setBulkLoading(false)
+    setBulkDialogOpen(false)
+
+    if (result.error) {
+      toast.error(result.error)
+    } else if (result.failed) {
+      toast.warning(`${result.verified} peminjaman diverifikasi, ${result.failed} gagal`)
+    } else {
+      toast.success(`${result.verified} peminjaman berhasil diverifikasi`)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -253,6 +279,18 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
             <SelectItem value="returned">Dikembalikan</SelectItem>
           </SelectContent>
         </Select>
+        {!isPermanentView && (
+          <Button
+            variant="primary"
+            onClick={() => setBulkDialogOpen(true)}
+            disabled={verifiableRequests.length === 0 || bulkLoading}
+            className="sm:order-last sm:ml-auto flex items-center gap-2 whitespace-nowrap"
+            title="Verifikasi pengembalian semua peminjaman yang sesuai filter"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Verifikasi Semua ({verifiableRequests.length})
+          </Button>
+        )}
         <Select value={usageLocationFilter} onValueChange={setUsageLocationFilter}>
           <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Filter Lokasi" />
@@ -399,6 +437,29 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
       />
+
+      {/* Bulk Verify Dialog */}
+      <AlertDialog open={bulkDialogOpen} onOpenChange={(open) => !bulkLoading && setBulkDialogOpen(open)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verifikasi Semua Pengembalian?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {verifiableRequests.length} peminjaman yang sedang dipinjam (sesuai filter saat ini) akan ditandai
+              sudah dikembalikan dan stok barang dipulihkan. Peminjaman yang masih perlu assign kode tidak termasuk.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkVerify() }}
+              disabled={bulkLoading}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              {bulkLoading ? 'Memproses...' : 'Ya, Verifikasi Semua'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !actionLoading && setConfirmDialog({ ...confirmDialog, open })}>

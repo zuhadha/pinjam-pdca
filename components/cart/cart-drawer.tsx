@@ -69,7 +69,7 @@ export function CartDrawer() {
                     {/* Item Image holder */}
                     <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
                       {item.images?.[0] ? (
-                        <img src={item.images[0].image_url} alt={item.name} className="w-full h-full object-cover" />
+                        <img loading="lazy" decoding="async" src={item.images[0].image_url} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-2xl bg-primary-50">
                           {item.category?.icon || '📦'}

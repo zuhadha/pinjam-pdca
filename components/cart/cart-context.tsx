@@ -4,6 +4,13 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { CartItem } from '@/lib/types/cart'
 import { getCartFromStorage, saveCartToStorage, clearCartStorage } from '@/lib/utils/cart-storage'
 import { toast } from 'sonner'
+import { toggleUnitInSelection, trimSelection } from '@/lib/utils/unit-selection'
+
+// Items with unit codes can't exceed the number of codes that were available
+function maxQuantityFor(item: Pick<CartItem, 'is_borrowable' | 'availableUnits' | 'stock_available'>) {
+  const unitCount = item.availableUnits?.length || 0
+  return item.is_borrowable && unitCount > 0 ? unitCount : item.stock_available
+}
 
 interface CartContextValue {
   items: CartItem[]
@@ -68,7 +75,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Update quantity (up to stock limit)
       const newQuantity = Math.min(
         existing.quantity + item.quantity,
-        item.stock_available
+        maxQuantityFor(item)
       )
       
       if (newQuantity === existing.quantity) {
@@ -108,8 +115,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(prev =>
       prev.map(item => {
         if (item.id === itemId) {
-          const newQuantity = Math.min(quantity, item.stock_available)
-          return { ...item, quantity: newQuantity }
+          const newQuantity = Math.min(quantity, maxQuantityFor(item))
+          return {
+            ...item,
+            quantity: newQuantity,
+            selectedUnits: trimSelection(item.selectedUnits, newQuantity),
+          }
         }
         return item
       })
@@ -117,25 +128,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const toggleUnit = (itemId: string, unitId: string, unitCode: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.id !== itemId) return item
-      
-      const currentSelected = item.selectedUnits || []
-      const isSelected = currentSelected.some(u => u.id === unitId)
-      
-      let newSelected: {id: string, code: string}[]
-      if (isSelected) {
-        newSelected = currentSelected.filter(u => u.id !== unitId)
-      } else {
-        newSelected = [...currentSelected, {id: unitId, code: unitCode}]
-      }
-      
-      return {
-        ...item,
-        selectedUnits: newSelected,
-        quantity: newSelected.length > 0 ? newSelected.length : 1 // if 0 selected, assume they want at least 1 but haven't specified OR delete?
-      }
-    }))
+    const current = items.find(i => i.id === itemId)
+    if (!current) return
+
+    const next = toggleUnitInSelection(
+      current.selectedUnits || [],
+      { id: unitId, code: unitCode },
+      current.quantity
+    )
+    if (!next) {
+      toast.warning(`Sudah memilih ${current.quantity} kode. Tambah jumlah untuk memilih lebih banyak.`)
+      return
+    }
+
+    setItems(prev => prev.map(item => (item.id === itemId ? { ...item, selectedUnits: next } : item)))
   }
 
   const clearCart = () => {

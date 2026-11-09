@@ -39,6 +39,7 @@ export function BorrowButton({ item, isAvailable }: BorrowButtonProps) {
             name: item.name,
             stock_available: item.stock_available,
             is_borrowable: item.is_borrowable,
+            units: item.units,
           }]}
           onClose={() => setShowModal(false)}
         />

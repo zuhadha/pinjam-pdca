@@ -15,6 +15,9 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { createBorrowRequest, type BorrowRequestItem } from '@/lib/actions/borrow-actions'
 import { toast } from 'sonner'
+import { useIsAdmin } from '@/lib/hooks/use-is-admin'
+import { toggleUnitInSelection, trimSelection } from '@/lib/utils/unit-selection'
+import { todayLocalDate } from '@/lib/utils/date-utils'
 
 interface BorrowModalProps {
   initialItems?: Array<{ 
@@ -156,6 +159,10 @@ function LocationCombobox({ value, onChange }: { value: string; onChange: (v: st
 
 export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const router = useRouter()
+  const isAdmin = useIsAdmin()
+  const today = todayLocalDate()
+  // Admins can record past borrowings, so no lower date limit for them
+  const minDate = isAdmin ? undefined : today
   const [items, setItems] = useState<BorrowRequestItem[]>(
     initialItems.map(item => ({ itemId: item.id, quantity: 1 }))
   )
@@ -185,6 +192,10 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
   const [borrowerName, setBorrowerName] = useState('')
   const [borrowerEmail, setBorrowerEmail] = useState('')
   const [borrowerDivision, setBorrowerDivision] = useState('')
+
+  // Admin only
+  const [autoReturned, setAutoReturned] = useState(false)
+  const [requestDate, setRequestDate] = useState(today)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -230,16 +241,16 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
           setLoading(false)
           return
         }
-        startDatetime = `${date}T${startTime}:00`
-        endDatetime = `${date}T${endTime}:00`
+        startDatetime = `${date}T${startTime}:00+07:00`
+        endDatetime = `${date}T${endTime}:00+07:00`
       } else {
         if (!startDate || !endDate) {
           setError('Tanggal mulai dan tanggal selesai harus diisi')
           setLoading(false)
           return
         }
-        startDatetime = `${startDate}T00:00:00`
-        endDatetime = `${endDate}T23:59:59`
+        startDatetime = `${startDate}T00:00:00+07:00`
+        endDatetime = `${endDate}T23:59:59+07:00`
       }
     }
     // Permanent requests don't need dates
@@ -256,6 +267,19 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       return
     }
 
+    // Items with unit codes need one code per unit
+    for (const item of initialItems) {
+      const hasUnits = item.is_borrowable && (item.units?.some(u => u.is_available) ?? false)
+      if (!hasUnits) continue
+      const selected = items.find(i => i.itemId === item.id)
+      const qty = selected?.quantity || 1
+      if ((selected?.selectedUnits?.length || 0) !== qty) {
+        setError(`Pilih ${qty} kode unit untuk ${item.name}`)
+        setLoading(false)
+        return
+      }
+    }
+
     const result = await createBorrowRequest({
       items,
       borrowerName,
@@ -267,6 +291,8 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
       usageLocation: isPermanent ? '-' : usageLocation,
       purpose,
       notes,
+      requestDate: isAdmin && isPermanent ? requestDate : undefined,
+      autoReturned: isAdmin && isBorrowable ? autoReturned : undefined,
     })
 
     if (result.error) {
@@ -275,6 +301,11 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
     } else {
       toast.success(result.message)
       onClose()
+      if (isAdmin && isBorrowable && autoReturned) {
+        // Nothing for the borrower to do; just refresh stock on the current page
+        router.refresh()
+        return
+      }
       const totalQty = items.reduce((sum, i) => sum + i.quantity, 0)
       const params = new URLSearchParams({
         name: result.borrowerName || '',
@@ -287,29 +318,45 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
     }
   }
 
+  const getMaxQuantity = (item: (typeof initialItems)[number]) => {
+    const availableUnits = item.units?.filter(u => u.is_available) || []
+    return item.is_borrowable && availableUnits.length > 0
+      ? availableUnits.length
+      : item.stock_available
+  }
+
   const updateQuantity = (itemId: string, quantity: number) => {
     const item = initialItems.find(i => i.id === itemId)
     if (!item) return
 
+    const max = getMaxQuantity(item)
+    if (quantity > max) quantity = max
     if (quantity < 1) quantity = 1
-    if (quantity > item.stock_available) quantity = item.stock_available
 
     setItems(prev =>
-      prev.map(i => (i.itemId === itemId ? { ...i, quantity } : i))
+      prev.map(i =>
+        i.itemId === itemId
+          ? { ...i, quantity, selectedUnits: trimSelection(i.selectedUnits, quantity) }
+          : i
+      )
     )
   }
 
   const toggleUnit = (itemId: string, unitId: string, unitCode: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.itemId !== itemId) return item
-      
-      // Exclusive selection (Single select as per user request)
-      return {
-        ...item,
-        selectedUnits: [{ id: unitId, code: unitCode }],
-        quantity: 1 // If selecting a unit, quantity is 1
-      }
-    }))
+    const current = items.find(i => i.itemId === itemId)
+    if (!current) return
+
+    const next = toggleUnitInSelection(
+      current.selectedUnits || [],
+      { id: unitId, code: unitCode },
+      current.quantity
+    )
+    if (!next) {
+      toast.warning(`Sudah memilih ${current.quantity} kode. Tambah jumlah untuk memilih lebih banyak.`)
+      return
+    }
+
+    setItems(prev => prev.map(i => (i.itemId === itemId ? { ...i, selectedUnits: next } : i)))
   }
 
   return (
@@ -341,7 +388,10 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 {initialItems.map((item) => {
                   const selectedItem = items.find(i => i.itemId === item.id)
                   const availableUnits = item.units?.filter(u => u.is_available) || []
-                  
+                  const quantity = selectedItem?.quantity || 1
+                  const selectedCount = selectedItem?.selectedUnits?.length || 0
+                  const maxQuantity = getMaxQuantity(item)
+
                   return (
                     <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <div className="flex items-center justify-between">
@@ -350,35 +400,38 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                           <p className="text-[10px] text-gray-500 mt-0.5">Stok tersedia: {item.stock_available}</p>
                         </div>
                         
-                        {/* Quantity Controls - Only show if no units available/provided (consumables) */}
-                        {(!item.is_borrowable || availableUnits.length === 0) && (
-                          <div className="flex items-center">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) - 1)}
-                              className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold"
-                            >
-                              −
-                            </button>
-                            <span className="w-10 text-center font-medium">
-                              {selectedItem?.quantity || 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, (selectedItem?.quantity || 1) + 1)}
-                              className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold"
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
+                        {/* Quantity Controls (default 1) */}
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, quantity - 1)}
+                            disabled={quantity <= 1}
+                            className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            −
+                          </button>
+                          <span className="w-10 text-center font-medium">
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, quantity + 1)}
+                            disabled={quantity >= maxQuantity}
+                            className="w-8 h-8 rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
 
                       {/* Unit Variations Grid - Compact Chips Version */}
                       {item.is_borrowable && availableUnits.length > 0 && (
-                        <div className="">
+                        <div className="mt-2">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] text-gray-400 uppercase tracking-widest">Pilih Kode:</span>
+                            <span className={`text-[10px] font-semibold ${selectedCount === quantity ? 'text-primary-600' : 'text-amber-600'}`}>
+                              {selectedCount}/{quantity} dipilih
+                            </span>
                             {/* {!selectedItem?.selectedUnits?.length && (
                               <span className="text-[9px] text-red-500 italic animate-pulse">
                                 * Wajib dipilih
@@ -514,7 +567,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={minDate}
                       required
                     />
                   </div>
@@ -555,7 +608,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={minDate}
                     required
                   />
                 </div>
@@ -566,7 +619,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate || new Date().toISOString().split('T')[0]}
+                    min={startDate || minDate}
                     required
                   />
                 </div>
@@ -596,6 +649,41 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             )}
 
+
+            {/* Admin: backdate a request */}
+            {isAdmin && isPermanent && (
+              <div>
+                <Label htmlFor="requestDate" className="mb-1 block text-gray-700">Tanggal Permintaan (Admin)</Label>
+                <Input
+                  id="requestDate"
+                  type="date"
+                  className="text-sm"
+                  value={requestDate}
+                  max={today}
+                  onChange={(e) => setRequestDate(e.target.value)}
+                  required
+                />
+                <p className="text-[11px] text-gray-500 mt-1">Ubah jika mencatat permintaan yang sudah terjadi.</p>
+              </div>
+            )}
+
+            {/* Admin: log a borrowing that is already finished */}
+            {isAdmin && isBorrowable && (
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoReturned}
+                  onChange={(e) => setAutoReturned(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-gray-900">Sudah dikembalikan</span>
+                  <span className="block text-[11px] text-gray-500">
+                    Barang sudah dipinjam dan sudah kembali. Dicatat sebagai riwayat, stok tidak berubah, dan email tidak dikirim.
+                  </span>
+                </span>
+              </label>
+            )}
 
             {/* Notes */}
             <div>
@@ -633,7 +721,11 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                 className="flex-1"
                 disabled={loading}
               >
-                {loading ? 'Memproses...' : isBorrowable ? 'Pinjam' : 'Ambil'}
+                {loading
+                  ? 'Memproses...'
+                  : isBorrowable
+                    ? (isAdmin && autoReturned ? 'Simpan Riwayat' : 'Pinjam')
+                    : 'Ambil'}
               </Button>
             </div>
           </form>

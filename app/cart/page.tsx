@@ -54,7 +54,7 @@ export default function CartPage() {
                       {/* Image */}
                       <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                         {item.images?.[0] ? (
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={item.images[0].image_url}
                             alt={item.name}
                             className="w-full h-full object-cover"
@@ -95,7 +95,33 @@ export default function CartPage() {
 
                         {item.is_borrowable && item.availableUnits && item.availableUnits.length > 0 ? (
                           <div className="flex flex-col gap-2 text-slate-500">
-                            <span className="text-sm font-medium text-gray-700">Pilih Unit Barang:</span>
+                            {/* Quantity Controls (default 1) */}
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-gray-600">Jumlah:</span>
+                              <div className="flex items-center gap-1 border border-gray-300 rounded-lg">
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  className="p-1 hover:bg-gray-100 rounded-l-lg transition-colors disabled:opacity-40"
+                                  disabled={item.quantity <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="w-6 text-center font-medium">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="p-1 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40"
+                                  disabled={item.quantity >= item.availableUnits.length}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Pilih Unit Barang:{' '}
+                              <span className={(item.selectedUnits?.length || 0) === item.quantity ? 'text-primary-600' : 'text-amber-600'}>
+                                {item.selectedUnits?.length || 0}/{item.quantity} dipilih
+                              </span>
+                            </span>
                             <div className="flex flex-wrap gap-2">
                               {item.availableUnits.map(unit => {
                                 const isSelected = item.selectedUnits?.some(u => u.id === unit.id)

@@ -50,7 +50,7 @@ export function ImageCarousel({
       <div className={`relative ${imageClassName} bg-gray-100 overflow-hidden rounded-lg`}>
         {/* Blurred background (only if useBlurBackground is true) */}
         {useBlurBackground && (
-          <img
+          <img loading="lazy" decoding="async"
             src={sortedImages[currentIndex].image_url}
             alt=""
             className="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-60"
@@ -59,7 +59,7 @@ export function ImageCarousel({
         )}
         
         {/* Main image */}
-        <img
+        <img loading="lazy" decoding="async"
           src={sortedImages[currentIndex].image_url}
           alt={`Product image ${currentIndex + 1}`}
           className={`relative w-full h-full ${useBlurBackground ? 'object-contain' : 'object-cover'}`}

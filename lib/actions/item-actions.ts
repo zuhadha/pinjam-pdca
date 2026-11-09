@@ -134,7 +134,7 @@ export async function getFeaturedItems(limit: number = 6) {
       *,
       category:categories(id, name, icon),
       images:item_images(id, image_url, display_order),
-      borrow_items(item_id)
+      borrow_items(count)
     `)
     .gt('stock_available', 0) // Only show available items
     .order('display_order', { foreignTable: 'item_images', ascending: true })
@@ -147,7 +147,8 @@ export async function getFeaturedItems(limit: number = 6) {
   // Calculate borrow count and sort by popularity
   const itemsWithCount = (data as any[]).map(item => ({
     ...item,
-    borrow_count: item.borrow_items?.length || 0
+    // Aggregate comes back as [{ count }] instead of one row per borrow
+    borrow_count: item.borrow_items?.[0]?.count || 0
   }))
 
   // Sort by borrow frequency (desc), then by name

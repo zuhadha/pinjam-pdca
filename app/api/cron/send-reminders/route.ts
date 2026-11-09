@@ -77,58 +77,63 @@ export async function GET(request: NextRequest) {
 
     // Query 1: Overdue borrow requests
     // end_datetime < startOfTodayWIB → berarti berakhir sebelum hari ini (H+1)
-    const { data: overdueRequests, error: queryError } = await supabase
-      .from('borrow_requests')
-      .select(`
-        id,
-        start_datetime,
-        end_datetime,
-        usage_location,
-        borrower_name,
-        borrower_email,
-        borrow_items (
-          quantity,
-          item:items (
-            name,
-            category:categories (name)
+    // Query 2: Due today borrow requests (Hanya untuk peminjaman lebih dari 1 hari)
+    // end_datetime >= startOfTodayWIB AND end_datetime <= endOfTodayWIB
+    // Both queries are independent, so they run in parallel.
+    const [
+      { data: overdueRequests, error: queryError },
+      { data: dueTodayRequests, error: dueTodayQueryError },
+    ] = await Promise.all([
+      supabase
+        .from('borrow_requests')
+        .select(`
+          id,
+          start_datetime,
+          end_datetime,
+          usage_location,
+          borrower_name,
+          borrower_email,
+          borrow_items (
+            quantity,
+            item:items (
+              name,
+              category:categories (name)
+            )
           )
-        )
-      `)
-      .eq('status', 'borrowed')
-      .eq('is_permanent', false) // Skip permanent requests
-      .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
-      .lt('end_datetime', startOfTodayWIB.toISOString()) // H+1: end_datetime sebelum hari ini
+        `)
+        .eq('status', 'borrowed')
+        .eq('is_permanent', false) // Skip permanent requests
+        .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
+        .lt('end_datetime', startOfTodayWIB.toISOString()), // H+1: end_datetime sebelum hari ini
+      supabase
+        .from('borrow_requests')
+        .select(`
+          id,
+          start_datetime,
+          end_datetime,
+          usage_location,
+          borrower_name,
+          borrower_email,
+          borrow_items (
+            quantity,
+            item:items (
+              name,
+              category:categories (name)
+            )
+          )
+        `)
+        .eq('status', 'borrowed')
+        .eq('is_permanent', false) // Skip permanent requests
+        .eq('is_same_day', false) // Hanya untuk peminjaman lebih dari 1 hari
+        .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
+        .gte('end_datetime', startOfTodayWIB.toISOString())
+        .lte('end_datetime', endOfTodayWIB.toISOString()),
+    ])
 
     if (queryError) {
       console.error('[Cron] Error querying overdue requests:', queryError)
       return NextResponse.json({ error: 'Database query failed' }, { status: 500 })
     }
-
-    // Query 2: Due today borrow requests (Hanya untuk peminjaman lebih dari 1 hari)
-    // end_datetime >= startOfTodayWIB AND end_datetime <= endOfTodayWIB
-    const { data: dueTodayRequests, error: dueTodayQueryError } = await supabase
-      .from('borrow_requests')
-      .select(`
-        id,
-        start_datetime,
-        end_datetime,
-        usage_location,
-        borrower_name,
-        borrower_email,
-        borrow_items (
-          quantity,
-          item:items (
-            name,
-            category:categories (name)
-          )
-        )
-      `)
-      .eq('status', 'borrowed')
-      .eq('is_permanent', false) // Skip permanent requests
-      .eq('is_same_day', false) // Hanya untuk peminjaman lebih dari 1 hari
-      .is('return_declared_at', null) // Hanya jika user belum deklarasi pengembalian
-      .gte('end_datetime', startOfTodayWIB.toISOString())
-      .lte('end_datetime', endOfTodayWIB.toISOString())
 
     if (dueTodayQueryError) {
       console.error('[Cron] Error querying due today requests:', dueTodayQueryError)
@@ -150,21 +155,16 @@ export async function GET(request: NextRequest) {
 
     // Filter: hanya kirim ke request yang belum dapat reminder hari ini (WIB)
     // FIX #1: gunakan todayWIB + offset +07:00, bukan UTC midnight
-    const requestsToRemind = []
+    // One query for all candidates instead of one query per request
+    const { data: todayLogs } = await supabase
+      .from('reminder_logs')
+      .select('request_id')
+      .in('request_id', allRequestsToProcess.map((req) => req.id))
+      .eq('status', 'sent')
+      .gte('sent_at', `${todayWIB}T00:00:00+07:00`) // FIX: pakai WIB midnight
 
-    for (const req of allRequestsToProcess) {
-      const { data: todayLogs } = await supabase
-        .from('reminder_logs')
-        .select('id')
-        .eq('request_id', req.id)
-        .eq('status', 'sent')
-        .gte('sent_at', `${todayWIB}T00:00:00+07:00`) // FIX: pakai WIB midnight
-        .limit(1)
-
-      if (!todayLogs || todayLogs.length === 0) {
-        requestsToRemind.push(req)
-      }
-    }
+    const remindedToday = new Set((todayLogs || []).map((log) => log.request_id))
+    const requestsToRemind = allRequestsToProcess.filter((req) => !remindedToday.has(req.id))
 
     console.log(`[Cron] ${requestsToRemind.length} requests need reminder today`)
 

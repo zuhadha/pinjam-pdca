@@ -1,4 +1,4 @@
-import { getAdminStats, getAllBorrowRequests } from '@/lib/actions/admin-actions'
+import { getAdminStats, getDashboardRequests } from '@/lib/actions/admin-actions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, FileText, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -7,65 +7,104 @@ import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
 import { MonthFilter } from '@/components/admin/month-filter'
+import {
+  MONTH_LONG,
+  formatWeekRange,
+  parseNumberList,
+  summarizeMonths,
+  summarizeWeeks,
+  weekOfYear,
+  weeksForMonths,
+  weeksInYear,
+} from '@/lib/utils/week-utils'
 
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string }>
+  searchParams: Promise<{ month?: string; months?: string; weeks?: string; year?: string; view?: string }>
 }) {
   const params = await searchParams
-  const selectedMonth = params.month ? parseInt(params.month) : null
-  const selectedYear = params.year ? parseInt(params.year) : new Date().getFullYear()
+  const selectedYear = params.year ? parseInt(params.year) || new Date().getFullYear() : new Date().getFullYear()
+  // `month` is the old single-month param, still accepted for saved links
+  const selectedMonths = parseNumberList(params.months ?? params.month, 1, 12)
+  const selectedWeeks = parseNumberList(params.weeks, 1, weeksInYear(selectedYear))
+  const viewMode: 'month' | 'week' = params.view === 'week' ? 'week' : 'month'
 
-  const monthLabels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-  const periodLabel = selectedMonth
-    ? `${monthLabels[selectedMonth - 1]} ${selectedYear}`
-    : `Tahun ${selectedYear}`
+  const periodLabel = [
+    selectedMonths.length === 1
+      ? `${MONTH_LONG[selectedMonths[0] - 1]} ${selectedYear}`
+      : selectedMonths.length > 1
+        ? `${summarizeMonths(selectedMonths)} ${selectedYear}`
+        : `Tahun ${selectedYear}`,
+    selectedWeeks.length ? summarizeWeeks(selectedWeeks) : null,
+  ].filter(Boolean).join(' · ')
 
-  const stats = await getAdminStats()
-  const recentRequests = await getAllBorrowRequests({})
+  const [stats, recentRequests] = await Promise.all([getAdminStats(), getDashboardRequests()])
 
   if (!stats) {
     return <div>Error loading dashboard</div>
   }
 
-  // Filter requests by selected month/year
-  const filteredRequests = selectedMonth
-    ? recentRequests.filter((r: any) => {
-        const d = new Date(r.created_at)
-        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
-      })
-    : recentRequests.filter((r: any) => new Date(r.created_at).getFullYear() === selectedYear)
+  // Filter requests by selected year, months and weeks
+  const filteredRequests = recentRequests.filter((r: any) => {
+    const d = new Date(r.created_at)
+    if (d.getFullYear() !== selectedYear) return false
+    if (selectedMonths.length && !selectedMonths.includes(d.getMonth() + 1)) return false
+    if (selectedWeeks.length && !selectedWeeks.includes(weekOfYear(d))) return false
+    return true
+  })
 
   const recentRequestsLimited = recentRequests.slice(0, 5)
 
   // -- Data Aggregation for Charts --
   const chartData = filteredRequests
 
-  // 1. Tren Peminjaman — mengikuti filter bulan/tahun
-  // Jika semua bulan dipilih: tampilkan per bulan (Jan–Des). Jika bulan spesifik dipilih: tampilkan per tanggal.
-  const trendData = selectedMonth
-    ? Array.from({ length: 31 }, (_, i) => {
-        const day = i + 1
-        const dateStr = String(day).padStart(2, '0')
-        return {
-          date: dateStr,
-          total: chartData.filter((r: any) => {
-            const d = new Date(r.created_at)
-            return d.getDate() === day
-          }).length
-        }
-      })
-    : Array.from({ length: 12 }, (_, i) => {
-        const monthLabel = monthLabels[i].slice(0, 3)
-        return {
-          date: monthLabel,
-          total: chartData.filter((r: any) => {
-            const d = new Date(r.created_at)
-            return d.getMonth() === i
-          }).length
-        }
-      })
+  // 1. Tren Peminjaman — mengikuti filter & mode tampilan
+  // Mingguan: per nomor minggu. Bulanan: per tanggal jika 1 bulan dipilih, selain itu per bulan.
+  let trendData: { date: string; total: number; range?: string }[]
+  let trendDescription: string
+
+  if (viewMode === 'week') {
+    const weeks = selectedWeeks.length ? selectedWeeks : weeksForMonths(selectedYear, selectedMonths)
+    const counts = new Map<number, number>()
+    chartData.forEach((r: any) => {
+      const w = weekOfYear(new Date(r.created_at))
+      counts.set(w, (counts.get(w) || 0) + 1)
+    })
+    trendData = weeks.map((w) => ({
+      date: `W${w}`,
+      total: counts.get(w) || 0,
+      range: formatWeekRange(selectedYear, w),
+    }))
+    trendDescription = 'Jumlah peminjaman per minggu'
+  } else if (selectedMonths.length === 1) {
+    const month = selectedMonths[0]
+    const daysInMonth = new Date(selectedYear, month, 0).getDate()
+    const counts = new Map<number, number>()
+    chartData.forEach((r: any) => {
+      const day = new Date(r.created_at).getDate()
+      counts.set(day, (counts.get(day) || 0) + 1)
+    })
+    trendData = Array.from({ length: daysInMonth }, (_, i) => ({
+      date: String(i + 1).padStart(2, '0'),
+      total: counts.get(i + 1) || 0,
+      range: `${i + 1} ${MONTH_LONG[month - 1]}`,
+    }))
+    trendDescription = `Jumlah peminjaman per hari · ${MONTH_LONG[month - 1]} ${selectedYear}`
+  } else {
+    const months = selectedMonths.length ? selectedMonths : Array.from({ length: 12 }, (_, i) => i + 1)
+    const counts = new Map<number, number>()
+    chartData.forEach((r: any) => {
+      const m = new Date(r.created_at).getMonth() + 1
+      counts.set(m, (counts.get(m) || 0) + 1)
+    })
+    trendData = months.map((m) => ({
+      date: MONTH_LONG[m - 1].slice(0, 3),
+      total: counts.get(m) || 0,
+      range: `${MONTH_LONG[m - 1]} ${selectedYear}`,
+    }))
+    trendDescription = 'Jumlah peminjaman per bulan'
+  }
 
   // 2. Kategori Terbanyak
   const categoryMap = new Map<string, number>()
@@ -141,11 +180,12 @@ export default async function AdminDashboardPage({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
           <p className="text-gray-600 mt-2">Selamat datang di panel administrasi sistem peminjaman barang</p>
         </div>
+        {/* Period filter on its own row so every control has room */}
         <MonthFilter />
       </div>
 
@@ -218,6 +258,7 @@ export default async function AdminDashboardPage({
       <DashboardCharts
         periodLabel={periodLabel}
         trendData={trendData}
+        trendDescription={trendDescription}
         categoryData={categoryData}
         topItemsData={topItemsData}
         deptData={deptData}

@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select'
 import { Calendar, Clock, MapPin, User, Mail, Building2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
+import { useIsAdmin } from '@/lib/hooks/use-is-admin'
+import { todayLocalDate } from '@/lib/utils/date-utils'
 
 const TIME_OPTIONS = Array.from({ length: 19 }, (_, i) => {
   const h = Math.floor(i / 2 + 8)
@@ -150,6 +152,10 @@ function LocationCombobox({ value, onChange, required }: { value: string; onChan
 export function CartCheckoutForm() {
   const { items, clearCart } = useCart()
   const router = useRouter()
+  const isAdmin = useIsAdmin()
+  const today = todayLocalDate()
+  // Admins can record past borrowings, so no lower date limit for them
+  const minDate = isAdmin ? undefined : today
 
   const isBorrowable = items.length > 0 ? items[0].is_borrowable : true
   const isPermanent = !isBorrowable
@@ -171,6 +177,10 @@ export function CartCheckoutForm() {
   const [usageLocation, setUsageLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
+
+  // Admin only
+  const [autoReturned, setAutoReturned] = useState(false)
+  const [requestDate, setRequestDate] = useState(today)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -211,6 +221,16 @@ export function CartCheckoutForm() {
         }
       }
 
+      // Items with unit codes need one code per unit
+      for (const item of items) {
+        const hasUnits = item.is_borrowable && (item.availableUnits?.length || 0) > 0
+        if (hasUnits && (item.selectedUnits?.length || 0) !== item.quantity) {
+          setError(`Pilih ${item.quantity} kode unit untuk ${item.name}`)
+          setLoading(false)
+          return
+        }
+      }
+
       const borrowItemsPayload = items.map((item) => ({
         itemId: item.id,
         quantity: item.quantity,
@@ -228,6 +248,8 @@ export function CartCheckoutForm() {
         purpose,
         notes,
         isPermanent,
+        requestDate: isAdmin && isPermanent ? requestDate : undefined,
+        autoReturned: isAdmin && isBorrowable ? autoReturned : undefined,
       })
 
       setLoading(false)
@@ -236,6 +258,11 @@ export function CartCheckoutForm() {
         setError(result.error)
       } else {
         clearCart()
+        if (isAdmin && isBorrowable && autoReturned) {
+          toast.success(result.message)
+          router.push('/admin/requests')
+          return
+        }
         // Redirect to success page with borrower info
         const totalQty = items.reduce((sum, i) => sum + i.quantity, 0)
         const params = new URLSearchParams({
@@ -370,7 +397,7 @@ export function CartCheckoutForm() {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={minDate}
                     required
                   />
                 </div>
@@ -412,7 +439,7 @@ export function CartCheckoutForm() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={minDate}
                     required
                   />
                 </div>
@@ -423,7 +450,7 @@ export function CartCheckoutForm() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate || new Date().toISOString().split('T')[0]}
+                    min={startDate || minDate}
                     required
                   />
                 </div>
@@ -458,6 +485,40 @@ export function CartCheckoutForm() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Admin: backdate a request */}
+        {isAdmin && isPermanent && (
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="request-date">Tanggal Permintaan (Admin)</Label>
+            <Input
+              id="request-date"
+              type="date"
+              value={requestDate}
+              max={today}
+              onChange={(e) => setRequestDate(e.target.value)}
+              required
+            />
+            <p className="text-xs text-gray-500">Ubah jika mencatat permintaan yang sudah terjadi.</p>
+          </div>
+        )}
+
+        {/* Admin: log a borrowing that is already finished */}
+        {isAdmin && isBorrowable && (
+          <label className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 bg-gray-50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoReturned}
+              onChange={(e) => setAutoReturned(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900">Sudah dikembalikan</span>
+              <span className="block text-xs text-gray-500">
+                Barang sudah dipinjam dan sudah kembali. Dicatat sebagai riwayat, stok tidak berubah, dan email tidak dikirim.
+              </span>
+            </span>
+          </label>
         )}
 
         {/* Notes (Always shown) */}

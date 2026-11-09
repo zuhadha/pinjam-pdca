@@ -7,43 +7,51 @@ import { revalidatePath } from 'next/cache'
 
 // Get admin dashboard stats
 export async function getAdminStats() {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
+  const [supabase, user] = await Promise.all([createClient(), getCurrentUser()])
 
   if (!user || user.role !== 'admin') {
     return null
   }
 
   try {
-    // Total items
-    const { count: totalItems } = await supabase
-      .from('items')
-      .select('*', { count: 'exact', head: true })
+    // Independent queries, run in parallel
+    const [
+      { count: totalItems },
+      { count: totalCategories },
+      { count: borrowedCount },
+      { count: verificationCount },
+      { data: itemsData },
+    ] = await Promise.all([
+      // Total items
+      supabase
+        .from('items')
+        .select('*', { count: 'exact', head: true }),
 
-    // Total categories
-    const { count: totalCategories } = await supabase
-      .from('categories')
-      .select('*', { count: 'exact', head: true })
+      // Total categories
+      supabase
+        .from('categories')
+        .select('*', { count: 'exact', head: true }),
 
-    // Currently borrowed (borrowed status only, non-permanent)
-    const { count: borrowedCount } = await supabase
-      .from('borrow_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'borrowed')
-      .eq('is_permanent', false)
+      // Currently borrowed (borrowed status only, non-permanent)
+      supabase
+        .from('borrow_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'borrowed')
+        .eq('is_permanent', false),
 
-    // Awaiting verification (return declared but not yet verified)
-    const { count: verificationCount } = await supabase
-      .from('borrow_requests')
-      .select('*', { count: 'exact', head: true })
-      .not('return_declared_at', 'is', null)
-      .is('return_verified_at', null)
-      .eq('is_permanent', false)
+      // Awaiting verification (return declared but not yet verified)
+      supabase
+        .from('borrow_requests')
+        .select('*', { count: 'exact', head: true })
+        .not('return_declared_at', 'is', null)
+        .is('return_verified_at', null)
+        .eq('is_permanent', false),
 
-    // Items with low stock (< 20% of total)
-    const { data: itemsData } = await supabase
-      .from('items')
-      .select('stock_total, stock_available')
+      // Items with low stock (< 20% of total)
+      supabase
+        .from('items')
+        .select('stock_total, stock_available'),
+    ])
 
     const lowStockCount =
       itemsData?.filter((item) => {
@@ -71,8 +79,7 @@ export async function getAllBorrowRequests(filters?: {
   search?: string
   isPermanent?: boolean
 }) {
-  const supabase = await createClient()
-  const user = await getCurrentUser()
+  const [supabase, user] = await Promise.all([createClient(), getCurrentUser()])
 
   if (!user || user.role !== 'admin') {
     return []
@@ -134,6 +141,42 @@ export async function getAllBorrowRequests(filters?: {
   return data || []
 }
 
+// Requests for the admin dashboard charts: same rows as getAllBorrowRequests({}),
+// but only the columns the charts use (no unit lists, which can be large).
+export async function getDashboardRequests() {
+  const [supabase, user] = await Promise.all([createClient(), getCurrentUser()])
+
+  if (!user || user.role !== 'admin') {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('borrow_requests')
+    .select(`
+      id,
+      created_at,
+      status,
+      borrower_division,
+      end_datetime,
+      return_verified_at,
+      borrow_items (
+        quantity,
+        item:items (
+          name,
+          category:categories (name)
+        )
+      )
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching dashboard requests:', error)
+    return []
+  }
+
+  return data || []
+}
+
 // Verify return (admin can verify regardless of whether user declared return)
 export async function verifyReturn(requestId: string, adminNotes?: string) {
   const supabase = await createClient()
@@ -156,7 +199,11 @@ export async function verifyReturn(requestId: string, adminNotes?: string) {
 
     if (fetchError || !request) {
       return { error: 'Data peminjaman tidak ditemukan' }
-      return { error: 'Request not found' }
+    }
+
+    // Guard against restoring stock twice (double click, stale page, bulk verify)
+    if (request.status === 'returned' || request.return_verified_at) {
+      return { error: 'Peminjaman ini sudah diverifikasi' }
     }
 
     // Restore stock: Find which items need to be returned
@@ -225,6 +272,30 @@ export async function verifyReturn(requestId: string, adminNotes?: string) {
     console.error('Error verifying return:', error)
     return { error: 'Terjadi kesalahan sistem' }
   }
+}
+
+// Verify returns for many requests at once (admin "Verifikasi Semua")
+export async function verifyReturnsBulk(requestIds: string[]) {
+  const user = await getCurrentUser()
+
+  if (!user || user.role !== 'admin') {
+    return { error: 'Unauthorized' }
+  }
+
+  let verified = 0
+  const failed: string[] = []
+
+  // One at a time so each request's stock restore finishes before the next
+  for (const id of requestIds) {
+    const result = await verifyReturn(id)
+    if (result.error) {
+      failed.push(id)
+    } else {
+      verified++
+    }
+  }
+
+  return { success: true, verified, failed: failed.length }
 }
 
 export async function assignUnitsToRequest(requestId: string, assignments: { borrowItemId: string, unitIds: string[] }[]) {

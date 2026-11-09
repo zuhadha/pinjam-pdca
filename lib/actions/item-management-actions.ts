@@ -233,25 +233,22 @@ export async function deleteItem(itemId: string) {
   }
 
   try {
-    // Get active borrow request IDs
-    const { data: activeRequests } = await supabase
-      .from('borrow_requests')
-      .select('id')
-      .in('status', ['approved', 'borrowed'])
-
-    const activeRequestIds = activeRequests?.map(r => r.id) || []
+    // Get active borrow request IDs.
+    // Permanent requests (permintaan) keep status 'borrowed' forever because nothing is
+    // returned, so they must not count as "currently borrowed" or request items could
+    // never be deleted.
+    // One query: count this item's rows whose request is still active
+    // (inner join instead of loading every active request id first).
+    const { count } = await supabase
+      .from('borrow_items')
+      .select('id, borrow_requests!inner(id)', { count: 'exact', head: true })
+      .eq('item_id', itemId)
+      .in('borrow_requests.status', ['approved', 'borrowed'])
+      .eq('borrow_requests.is_permanent', false)
 
     // Check if item is currently borrowed
-    if (activeRequestIds.length > 0) {
-      const { count } = await supabase
-        .from('borrow_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('item_id', itemId)
-        .in('request_id', activeRequestIds)
-
-      if (count && count > 0) {
-        return { error: 'Tidak bisa menghapus barang yang sedang dipinjam' }
-      }
+    if (count && count > 0) {
+      return { error: 'Tidak bisa menghapus barang yang sedang dipinjam' }
     }
 
     // Hard delete instead of soft delete

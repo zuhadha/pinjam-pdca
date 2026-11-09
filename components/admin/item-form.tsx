@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import * as LucideIcons from 'lucide-react'
+import { getCategoryIcon } from '@/lib/category-icons'
 import { PlusCircle, MinusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -145,7 +145,7 @@ export function ItemForm({ categories, mode, initialData }: ItemFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => {
-                  const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+                  const IconComp = cat.icon && getCategoryIcon(cat.icon)
                   return (
                     <SelectItem key={cat.id} value={cat.id}>
                       <div className="flex items-center gap-2">

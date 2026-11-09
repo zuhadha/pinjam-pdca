@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { deleteCategory } from '@/lib/actions/item-management-actions'
 import { Edit, Trash2, Loader2, Link as LinkIcon } from 'lucide-react'
-import * as LucideIcons from 'lucide-react'
+import { getCategoryIcon } from '@/lib/category-icons'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Pagination } from '@/components/ui/pagination'
+import { useSessionState } from '@/lib/hooks/use-session-state'
 
 interface CategoriesTableProps {
   categories: any[]
@@ -32,8 +33,11 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
     categoryId: null,
     categoryName: '',
   })
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  // Kept in sessionStorage so the search survives leaving and coming back
+  const [filters, setFilters] = useSessionState('admin-categories-filters', { search: '', page: 1 })
+  const searchQuery = filters.search
+  const setSearchQuery = (search: string) => setFilters({ search, page: 1 })
+  const setCurrentPage = (page: number) => setFilters(prev => ({ ...prev, page }))
   const itemsPerPage = 10
 
   const handleDeleteClick = (categoryId: string, categoryName: string) => {
@@ -69,16 +73,13 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
     })
   }, [categories, searchQuery])
 
-  // Pagination
+  // Pagination (clamped in case the saved page no longer exists)
   const totalPages = Math.ceil(filteredCategories.length / itemsPerPage)
+  const currentPage = Math.min(Math.max(filters.page, 1), Math.max(totalPages, 1))
   const paginatedCategories = filteredCategories.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   )
-
-  useMemo(() => {
-    setCurrentPage(1)
-  }, [searchQuery])
 
   return (
     <div className="space-y-4">
@@ -120,8 +121,8 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedCategories.map((category) => {
                   let IconComp = null;
-                  if (category.icon && (LucideIcons as any)[category.icon]) {
-                    IconComp = (LucideIcons as any)[category.icon]
+                  if (category.icon && getCategoryIcon(category.icon)) {
+                    IconComp = getCategoryIcon(category.icon)
                   }
 
                   return (

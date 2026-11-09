@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Category } from '@/lib/actions/item-actions'
 import { Search, X, ShoppingBag, User, ArrowLeft, SlidersHorizontal, MoreHorizontal } from 'lucide-react'
@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import * as LucideIcons from 'lucide-react'
+import { getCategoryIcon } from '@/lib/category-icons'
+import { useRestoreSearchParams } from '@/lib/hooks/use-restore-search-params'
 
 interface SearchFiltersProps {
   categories: Category[]
@@ -32,7 +33,28 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
 
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
+  // Bring back the last catalog filters when returning to /catalog without any
+  useRestoreSearchParams('catalog-filters')
+
+  // Sync inputs when the URL changes from outside (restore, back button, links),
+  // but not for our own pushes, so fast typing isn't overwritten.
+  const query = searchParams.toString()
+  const [lastPushed, setLastPushed] = useState(query)
+  const [seenQuery, setSeenQuery] = useState(query)
+  if (query !== seenQuery) {
+    setSeenQuery(query)
+    if (query !== lastPushed) {
+      setLastPushed(query)
+      setSearch(searchParams.get('search') || '')
+      setCategoryId(searchParams.get('category') || '')
+      setAvailableOnly(searchParams.get('available') === 'true')
+      setBorrowType(searchParams.get('type') || 'all')
+    }
+  }
+
   const applyFilters = (newSearch: string, newCategoryId: string, newAvailableOnly: boolean, newType: string) => {
+    // Any direct apply supersedes a pending debounced search
+    clearPendingSearch()
     const params = new URLSearchParams()
     
     if (newSearch) params.set('search', newSearch)
@@ -41,14 +63,35 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
     if (newType !== 'all') params.set('type', newType)
 
     setShowMobileFilters(false) // Close overlay on apply
+    setLastPushed(params.toString())
     startTransition(() => {
       router.push(`/catalog?${params.toString()}`)
     })
   }
 
+  // Typing updates the input instantly; the URL (and server query) waits until
+  // typing pauses, instead of one server round trip per keystroke.
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearPendingSearch = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = null
+  }
+  useEffect(() => () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+  }, [])
+
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    applyFilters(value, categoryId, availableOnly, borrowType)
+    clearPendingSearch()
+    if (!value) {
+      // Clearing the search applies right away
+      applyFilters(value, categoryId, availableOnly, borrowType)
+      return
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      searchDebounceRef.current = null
+      applyFilters(value, categoryId, availableOnly, borrowType)
+    }, 300)
   }
 
   const handleCategoryChange = (value: string) => {
@@ -74,6 +117,7 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
     setAvailableOnly(false)
     setBorrowType('all')
     setShowMobileFilters(false)
+    setLastPushed('')
     startTransition(() => {
       router.push('/catalog')
     })
@@ -248,7 +292,7 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
         {!hasActiveFilters && (
           <div className="border-gray-100 flex gap-2 overflow-x-auto scrollbar-hide py-2">
             {categories.map((cat) => {
-              const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+              const IconComp = cat.icon && getCategoryIcon(cat.icon)
               return (
                 <button
                   key={cat.id}
@@ -303,7 +347,7 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
               <SelectContent>
                 <SelectItem value="all">Semua Kategori</SelectItem>
                 {categories.map((cat) => {
-                  const IconComp = cat.icon && (LucideIcons as any)[cat.icon]
+                  const IconComp = cat.icon && getCategoryIcon(cat.icon)
                   return (
                     <SelectItem key={cat.id} value={cat.id}>
                       <div className="flex items-center gap-2">

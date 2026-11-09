@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
+import { useSessionState } from '@/lib/hooks/use-session-state'
 
 interface AdminItem {
   id: string
@@ -55,31 +56,34 @@ export function ItemsTable({ items }: ItemsTableProps) {
     itemId: null,
     itemName: '',
   })
-  const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [locationFilter, setLocationFilter] = useState<string>('all')
-  const [currentPage, setCurrentPage] = useState(1)
+  // Kept in sessionStorage so filters survive going to the edit page and back
+  const [filters, setFilters] = useSessionState('admin-items-filters', {
+    search: '',
+    category: 'all',
+    type: 'all',
+    location: 'all',
+    stock: 'all',
+    page: 1,
+  })
+  const {
+    search: searchQuery,
+    category: categoryFilter,
+    type: typeFilter,
+    location: locationFilter,
+    stock: stockFilter,
+  } = filters
   const itemsPerPage = 10
 
-  const updateSearchQuery = (value: string) => {
-    setSearchQuery(value)
-    setCurrentPage(1)
+  const updateFilter = (key: 'search' | 'category' | 'type' | 'location' | 'stock', value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value, page: 1 }))
   }
+  const setCurrentPage = (page: number) => setFilters(prev => ({ ...prev, page }))
 
-  const updateCategoryFilter = (value: string) => {
-    setCategoryFilter(value)
-    setCurrentPage(1)
-  }
+  const hasActiveFilters =
+    !!searchQuery || categoryFilter !== 'all' || typeFilter !== 'all' || locationFilter !== 'all' || stockFilter !== 'all'
 
-  const updateTypeFilter = (value: string) => {
-    setTypeFilter(value)
-    setCurrentPage(1)
-  }
-
-  const updateLocationFilter = (value: string) => {
-    setLocationFilter(value)
-    setCurrentPage(1)
+  const resetFilters = () => {
+    setFilters({ search: '', category: 'all', type: 'all', location: 'all', stock: 'all', page: 1 })
   }
 
   const handleDeleteClick = (itemId: string, itemName: string) => {
@@ -132,12 +136,21 @@ export function ItemsTable({ items }: ItemsTableProps) {
         return false
       }
 
+      // Stock filter (same stock number the table shows)
+      if (stockFilter !== 'all') {
+        const isBorrowable = item.is_borrowable ?? true
+        const stockCount = isBorrowable ? item.stock_available : item.stock_total
+        if (stockFilter === 'empty' && stockCount > 0) return false
+        if (stockFilter === 'available' && stockCount <= 0) return false
+      }
+
       return true
     })
-  }, [items, searchQuery, categoryFilter, typeFilter, locationFilter])
+  }, [items, searchQuery, categoryFilter, typeFilter, locationFilter, stockFilter])
 
-  // Pagination
+  // Pagination (clamped in case the saved page no longer exists)
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const currentPage = Math.min(Math.max(filters.page, 1), Math.max(totalPages, 1))
   const paginatedItems = filteredItems.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -168,14 +181,14 @@ export function ItemsTable({ items }: ItemsTableProps) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
         <Input
           placeholder="Cari nama, deskripsi, atau lokasi..."
           value={searchQuery}
-          onChange={(e) => updateSearchQuery(e.target.value)}
+          onChange={(e) => updateFilter('search', e.target.value)}
           className="h-auto leading-none text-sm sm:max-w-xs"
         />
-        <Select value={categoryFilter} onValueChange={updateCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={(v) => updateFilter('category', v)}>
           <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Semua Kategori" />
           </SelectTrigger>
@@ -186,7 +199,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={updateTypeFilter}>
+        <Select value={typeFilter} onValueChange={(v) => updateFilter('type', v)}>
           <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Semua Tipe" />
           </SelectTrigger>
@@ -196,7 +209,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
             <SelectItem value="requestable">Permintaan</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={locationFilter} onValueChange={updateLocationFilter}>
+        <Select value={locationFilter} onValueChange={(v) => updateFilter('location', v)}>
           <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Semua Lokasi" />
           </SelectTrigger>
@@ -207,6 +220,24 @@ export function ItemsTable({ items }: ItemsTableProps) {
             ))}
           </SelectContent>
         </Select>
+        <Select value={stockFilter} onValueChange={(v) => updateFilter('stock', v)}>
+          <SelectTrigger className="sm:w-[160px]">
+            <SelectValue placeholder="Semua Stok" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Stok</SelectItem>
+            <SelectItem value="empty">Stok Habis</SelectItem>
+            <SelectItem value="available">Stok Tersedia</SelectItem>
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <button
+            onClick={resetFilters}
+            className="text-sm text-gray-500 hover:text-primary-600 underline-offset-2 hover:underline"
+          >
+            Reset filter
+          </button>
+        )}
         <div className="text-sm text-gray-600 flex items-center ml-auto">
           {filteredItems.length} barang
         </div>
@@ -255,7 +286,7 @@ export function ItemsTable({ items }: ItemsTableProps) {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {item.images?.[0]?.image_url ? (
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={item.images[0].image_url}
                               alt={item.name}
                               className="h-12 w-12 rounded-md object-cover"

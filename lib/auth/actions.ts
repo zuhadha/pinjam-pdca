@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getCurrentUserCached } from '@/lib/auth/session'
 
 export interface LoginResult {
   error?: string
@@ -37,22 +38,10 @@ export async function logoutAction() {
 }
 
 export async function getCurrentUser() {
-  const supabase = await createClient()
+  return getCurrentUserCached()
+}
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return null
-  }
-
-  // Get user role from database
-  const { data: userData } = await supabase
-    .from('users')
-    .select('id, username, name, nik, role')
-    .eq('id', user.id)
-    .single()
-
-  return userData
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  const user = await getCurrentUser()
+  return user?.role === 'admin'
 }

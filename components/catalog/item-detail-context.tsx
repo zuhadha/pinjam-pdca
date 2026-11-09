@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react'
 import type { Item } from '@/lib/actions/item-actions'
 import { ItemDetailModal } from './item-detail-modal'
 
@@ -14,11 +14,13 @@ const ItemDetailContext = createContext<ItemDetailContextType | undefined>(undef
 export function ItemDetailProvider({ children }: { children: ReactNode }) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
-  const openItem = (item: Item) => setSelectedItem(item)
-  const closeItem = () => setSelectedItem(null)
+  // Stable value: opening/closing the modal no longer re-renders every item card
+  const openItem = useCallback((item: Item) => setSelectedItem(item), [])
+  const closeItem = useCallback(() => setSelectedItem(null), [])
+  const value = useMemo(() => ({ openItem, closeItem }), [openItem, closeItem])
 
   return (
-    <ItemDetailContext.Provider value={{ openItem, closeItem }}>
+    <ItemDetailContext.Provider value={value}>
       {children}
       {selectedItem && (
         <ItemDetailModal 

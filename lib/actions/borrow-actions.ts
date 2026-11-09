@@ -2,9 +2,12 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { sendBorrowConfirmationEmail, sendAdminBorrowNotificationEmail, createReturnToken } from '@/lib/email/email-service'
 import { getAdminNotificationEmails } from '@/lib/actions/settings-actions'
 import { generateSecureToken } from '@/lib/utils/token-utils'
+import { getCurrentUser } from '@/lib/auth/actions'
+import { jakartaDate } from '@/lib/utils/date-utils'
 
 export interface BorrowRequestItem {
   itemId: string
@@ -31,6 +34,10 @@ export interface CreateBorrowRequestInput {
   usageLocation: string
   purpose: string
   notes?: string
+
+  // Admin only (ignored for everyone else)
+  requestDate?: string // YYYY-MM-DD, backdate a permanent request
+  autoReturned?: boolean // borrowing already happened and items are back
 }
 
 function getCategoryName(category: unknown) {
@@ -68,6 +75,12 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       return { error: 'Lokasi penggunaan harus diisi' }
     }
 
+    // Admins may backdate records and log already-returned borrowings
+    const currentUser = await getCurrentUser()
+    const isAdmin = currentUser?.role === 'admin'
+    const autoReturned = isAdmin && !input.isPermanent && !!input.autoReturned
+    const today = jakartaDate()
+
     // Validate based on request type
     let startDatetime: Date | null = null
     let endDatetime: Date | null = null
@@ -88,6 +101,10 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
 
       if (endDatetime <= startDatetime) {
         return { error: 'Waktu selesai harus setelah waktu mulai' }
+      }
+
+      if (!isAdmin && jakartaDate(startDatetime) < today) {
+        return { error: 'Tanggal peminjaman tidak boleh sebelum hari ini' }
       }
 
       // Auto-detect if same-day borrowing
@@ -119,7 +136,7 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         stock_available, 
         is_borrowable,
         category:categories(name),
-        units:item_units(id, is_available)
+        units:item_units(id, code, is_available)
       `)
       .in('id', itemIds)
 
@@ -142,17 +159,59 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         return { error: `${item.name} adalah barang permintaan dan tidak bisa dipinjam sementara` }
       }
       
-      // Validation: Borrowable items with units MUST have selection
+      if (!Number.isInteger(requestItem.quantity) || requestItem.quantity < 1) {
+        return { error: `Jumlah tidak valid untuk barang: ${item.name}` }
+      }
+
+      // Borrowable items with unit codes need exactly one code per unit borrowed
       if (item.is_borrowable && item.units && item.units.length > 0) {
-        if (!requestItem.selectedUnits || requestItem.selectedUnits.length === 0) {
-          return { error: `Silakan pilih kode unit untuk barang: ${item.name}` }
+        const selected = requestItem.selectedUnits || []
+        if (selected.length !== requestItem.quantity) {
+          return { error: `Pilih ${requestItem.quantity} kode unit untuk barang: ${item.name}` }
+        }
+        if (new Set(selected.map((u) => u.id)).size !== selected.length) {
+          return { error: `Kode unit ganda untuk barang: ${item.name}` }
+        }
+        for (const unit of selected) {
+          const dbUnit = item.units.find((u) => u.id === unit.id)
+          if (!dbUnit) {
+            return { error: `Kode unit tidak valid untuk barang: ${item.name}` }
+          }
+          // Already-returned records don't take the unit, so it may be out right now
+          if (!autoReturned && !dbUnit.is_available) {
+            return { error: `Kode ${dbUnit.code} sedang dipinjam. Silakan pilih kode lain.` }
+          }
         }
       }
 
-      if (item.stock_available < requestItem.quantity) {
+      if (!autoReturned && item.stock_available < requestItem.quantity) {
         return { error: `Stok tidak mencukupi untuk barang: ${item.name}` }
       }
     }
+
+    // Backdated admin records are dated on the day they happened
+    let createdAt: string | undefined
+    if (isAdmin) {
+      if (startDatetime && startDatetime.getTime() < Date.now()) {
+        createdAt = startDatetime.toISOString()
+      } else if (input.isPermanent && input.requestDate) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(input.requestDate)) {
+          return { error: 'Format tanggal permintaan tidak valid' }
+        }
+        if (input.requestDate > today) {
+          return { error: 'Tanggal permintaan tidak boleh di masa depan' }
+        }
+        // Keep the current time of day, shifted back by whole days
+        const daysBack = Math.round((Date.parse(today) - Date.parse(input.requestDate)) / 86_400_000)
+        if (daysBack > 0) {
+          createdAt = new Date(Date.now() - daysBack * 86_400_000).toISOString()
+        }
+      }
+    }
+
+    const returnedAt = autoReturned && endDatetime
+      ? new Date(Math.min(endDatetime.getTime(), Date.now())).toISOString()
+      : null
 
     // Create borrow request (no user_id needed)
     const { data: borrowRequest, error: requestError } = await supabase
@@ -168,8 +227,16 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         is_same_day: isSameDay,
         purpose: input.purpose,
         notes: input.notes,
-        status: 'borrowed',
-        approved_at: new Date().toISOString(),
+        status: autoReturned ? 'returned' : 'borrowed',
+        approved_at: createdAt || new Date().toISOString(),
+        ...(createdAt ? { created_at: createdAt } : {}),
+        ...(autoReturned
+          ? {
+              return_declared_at: returnedAt,
+              return_verified_at: returnedAt,
+              admin_notes: 'Dicatat admin: sudah dikembalikan',
+            }
+          : {}),
       })
       .select()
       .single()
@@ -186,22 +253,16 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       quantity: item.quantity,
     }))
 
-    const { error: itemsInsertError } = await supabase.from('borrow_items').insert(borrowItems)
+    // Return the new rows' ids from the insert itself (saves a separate select)
+    const { data: insertedBorrowItems, error: itemsInsertError } = await supabase
+      .from('borrow_items')
+      .insert(borrowItems)
+      .select('id, item_id')
 
     if (itemsInsertError) {
       // Rollback: delete the request
       await supabase.from('borrow_requests').delete().eq('id', borrowRequest.id)
       return { error: 'Gagal menambahkan barang ke permintaan' }
-    }
-
-    // Retrieve newly inserted borrow_items to get their IDs
-    const { data: insertedBorrowItems, error: getItemsError } = await supabase
-      .from('borrow_items')
-      .select('id, item_id')
-      .eq('request_id', borrowRequest.id)
-    
-    if (getItemsError) {
-      console.error('Error fetching inserted borrow items:', getItemsError)
     }
 
     // Process selected item units
@@ -224,10 +285,37 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     }
 
     if (borrowItemUnitsToInsert.length > 0) {
-      // Insert junction
+      // Insert junction (kept for history even when already returned)
       const { error: junctionError } = await supabase.from('borrow_item_units').insert(borrowItemUnitsToInsert)
       if (junctionError) console.error('Error inserting borrow_item_units', junctionError)
-      
+    }
+
+    if (autoReturned) {
+      // Items are already back: leave stock untouched, log it and skip emails/return link
+      await supabase.from('borrow_logs').insert({
+        request_id: borrowRequest.id,
+        old_status: 'borrowed',
+        new_status: 'returned',
+        changed_by: currentUser?.id ?? null,
+        notes: 'Dicatat admin sebagai sudah dikembalikan',
+      })
+
+      revalidatePath('/catalog')
+      revalidatePath('/admin')
+      revalidatePath('/admin/requests')
+      revalidatePath('/admin/items')
+
+      return {
+        success: true,
+        requestId: borrowRequest.id,
+        borrowerName: input.borrowerName.trim(),
+        borrowerEmail: input.borrowerEmail.trim(),
+        itemCount: input.items.length,
+        message: 'Riwayat peminjaman berhasil dicatat sebagai sudah dikembalikan.',
+      }
+    }
+
+    if (unitIdsToUpdate.length > 0) {
       // Update units availability to false (this triggers items stock_available decrement)
       const { error: unitsUpdateError } = await supabase
         .from('item_units')
@@ -238,31 +326,32 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
 
     // In cases where user requested quantity manually but didn't select units
     // (requestable/permanent items or legacy items without units), update item stock directly.
-    for (const requestItem of input.items) {
+    // Each item is a different row, so the updates can run in parallel
+    await Promise.all(input.items.map(async (requestItem) => {
       const dbItem = items?.find((i) => i.id === requestItem.itemId)
-      if (dbItem) {
-        const selectedCount = requestItem.selectedUnits?.length || 0
-        const quantityToDecrement = requestItem.quantity - selectedCount
+      if (!dbItem) return
 
-        if (quantityToDecrement <= 0) {
-          continue
-        }
+      const selectedCount = requestItem.selectedUnits?.length || 0
+      const quantityToDecrement = requestItem.quantity - selectedCount
 
-        const newStock = dbItem.stock_available - quantityToDecrement
-        const stockUpdate = input.isPermanent && !dbItem.is_borrowable
-          ? { stock_total: newStock, stock_available: newStock }
-          : { stock_available: newStock }
-
-        const { error: stockError } = await supabase
-          .from('items')
-          .update(stockUpdate)
-          .eq('id', dbItem.id)
-
-        if (stockError) {
-          console.error('Failed to update stock for item:', dbItem.id, stockError)
-        }
+      if (quantityToDecrement <= 0) {
+        return
       }
-    }
+
+      const newStock = dbItem.stock_available - quantityToDecrement
+      const stockUpdate = input.isPermanent && !dbItem.is_borrowable
+        ? { stock_total: newStock, stock_available: newStock }
+        : { stock_available: newStock }
+
+      const { error: stockError } = await supabase
+        .from('items')
+        .update(stockUpdate)
+        .eq('id', dbItem.id)
+
+      if (stockError) {
+        console.error('Failed to update stock for item:', dbItem.id, stockError)
+      }
+    }))
 
     // Create return token (reusable, valid for end_datetime + 30 days or 60 days for permanent)
     let tokenExpiresAt: Date
@@ -275,13 +364,16 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
     }
 
     const returnToken = generateSecureToken()
-    const tokenCreated = await createReturnToken(borrowRequest.id, returnToken, tokenExpiresAt)
+    const [tokenCreated, adminEmails] = await Promise.all([
+      createReturnToken(borrowRequest.id, returnToken, tokenExpiresAt),
+      getAdminNotificationEmails(),
+    ])
 
     if (!tokenCreated) {
       console.error('Failed to create return token for request:', borrowRequest.id)
     }
 
-    // Send confirmation email (fire-and-forget, don't block response)
+    // Email content
     const emailItems = input.items.map((ri) => {
       const item = items?.find((i) => i.id === ri.itemId)
       return {
@@ -291,30 +383,13 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
       }
     })
 
-    // Send email (awaiting is necessary for Serverless functions to finish before exit)
-    await sendBorrowConfirmationEmail({
-      borrowerEmail: input.borrowerEmail.trim().toLowerCase(),
-      borrowerName: input.borrowerName.trim(),
-      borrowerDivision: input.borrowerDivision.trim(),
-      items: emailItems,
-      startDatetime: startDatetime?.toISOString() || null,
-      endDatetime: endDatetime?.toISOString() || null,
-      usageLocation: input.usageLocation.trim(),
-      purpose: input.purpose,
-      isPermanent: input.isPermanent,
-      returnToken: tokenCreated ? returnToken : '',
-    }).catch((err) => {
-      console.error('Failed to send confirmation email:', err)
-    })
-
-    // Fetch admin emails and send notification with delay
-    const adminEmails = await getAdminNotificationEmails()
-    if (adminEmails.length > 0) {
-      // Await is necessary for Serverless functions, using 2s delay
-      await sendAdminBorrowNotificationEmail({
-        adminEmails,
-        borrowerName: input.borrowerName.trim(),
+    // Send emails after the response is returned, so the borrower doesn't wait for
+    // the mail provider (and the 2s admin delay). after() keeps the work alive on
+    // serverless hosts as well, which is why it used to be awaited here.
+    after(async () => {
+      await sendBorrowConfirmationEmail({
         borrowerEmail: input.borrowerEmail.trim().toLowerCase(),
+        borrowerName: input.borrowerName.trim(),
         borrowerDivision: input.borrowerDivision.trim(),
         items: emailItems,
         startDatetime: startDatetime?.toISOString() || null,
@@ -322,11 +397,30 @@ export async function createBorrowRequest(input: CreateBorrowRequestInput) {
         usageLocation: input.usageLocation.trim(),
         purpose: input.purpose,
         isPermanent: input.isPermanent,
-        requestId: borrowRequest.id,
-      }, 2000).catch((err) => {
-        console.error('Failed to send admin notification emails:', err)
+        returnToken: tokenCreated ? returnToken : '',
+      }).catch((err) => {
+        console.error('Failed to send confirmation email:', err)
       })
-    }
+
+      // Admin notification with 2s delay, after the borrower's email
+      if (adminEmails.length > 0) {
+        await sendAdminBorrowNotificationEmail({
+          adminEmails,
+          borrowerName: input.borrowerName.trim(),
+          borrowerEmail: input.borrowerEmail.trim().toLowerCase(),
+          borrowerDivision: input.borrowerDivision.trim(),
+          items: emailItems,
+          startDatetime: startDatetime?.toISOString() || null,
+          endDatetime: endDatetime?.toISOString() || null,
+          usageLocation: input.usageLocation.trim(),
+          purpose: input.purpose,
+          isPermanent: input.isPermanent,
+          requestId: borrowRequest.id,
+        }, 2000).catch((err) => {
+          console.error('Failed to send admin notification emails:', err)
+        })
+      }
+    })
 
     revalidatePath('/catalog')
     revalidatePath('/admin')

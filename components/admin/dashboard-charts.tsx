@@ -22,7 +22,8 @@ const PUNCTUALITY_COLORS = ['#10b981', '#ef4444'] // Green for On-Time, Red for 
 
 interface DashboardChartsProps {
   periodLabel: string
-  trendData: { date: string; total: number }[]
+  trendData: { date: string; total: number; range?: string }[]
+  trendDescription?: string
   categoryData: { name: string; value: number }[]
   topItemsData: { name: string; value: number }[]
   deptData: { name: string; value: number }[]
@@ -32,6 +33,7 @@ interface DashboardChartsProps {
 export function DashboardCharts({
   periodLabel,
   trendData,
+  trendDescription,
   categoryData,
   topItemsData,
   deptData,
@@ -46,7 +48,10 @@ export function DashboardCharts({
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold text-gray-800">Tren Peminjaman</CardTitle>
-            <CardDescription>Intensitas peminjaman dari waktu ke waktu</CardDescription>
+            <CardDescription>
+              {trendDescription || 'Intensitas peminjaman dari waktu ke waktu'}
+              <span className="text-gray-400"> · {periodLabel}</span>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] w-full mt-4">
@@ -64,6 +69,12 @@ export function DashboardCharts({
                   <Tooltip
                     cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    // Show the date range for each point (e.g. "W5 · 27 Jan – 2 Feb")
+                    labelFormatter={(label, payload) => {
+                      const range = payload?.[0]?.payload?.range
+                      return range && range !== label ? `${label} · ${range}` : label
+                    }}
+                    formatter={(value) => [value, 'Peminjaman']}
                   />
                   <Area 
                     type="monotone" 

@@ -16,8 +16,7 @@ interface ItemDetailPageProps {
 
 export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
   const { id } = await params
-  const item = await getItemById(id)
-  const user = await getCurrentUser()
+  const [item, user] = await Promise.all([getItemById(id), getCurrentUser()])
 
   if (!item) {
     return (

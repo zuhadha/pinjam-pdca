@@ -1,6 +1,9 @@
 import { getItems, getCategories } from '@/lib/actions/item-actions'
 import { ItemCard } from '@/components/catalog/item-card'
 import { SearchFilters } from '@/components/catalog/search-filters'
+import Link from 'next/link'
+import { Footer } from '@/components/layout/footer'
+import { getCurrentUser } from '@/lib/auth/actions'
 
 interface CatalogPageProps {
   searchParams: Promise<{
@@ -13,17 +16,21 @@ interface CatalogPageProps {
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams
-  const categories = await getCategories()
-  const items = await getItems({
-    search: params.search,
-    categoryId: params.category,
-    availableOnly: params.available === 'true',
-    isBorrowable: params.type === 'pinjam' ? true : params.type === 'minta' ? false : undefined,
-  })
+  const [categories, items, user] = await Promise.all([
+    getCategories(),
+    getItems({
+      search: params.search,
+      categoryId: params.category,
+      availableOnly: params.available === 'true',
+      isBorrowable: params.type === 'pinjam' ? true : params.type === 'minta' ? false : undefined,
+    }),
+    getCurrentUser(),
+  ])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 mt-14 lg:mt-0">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* flex-1 keeps the footer at the bottom when there are few items */}
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 mt-14 lg:mt-0">
         {/* Header (Desktop only) */}
         <div className="mb-8 hidden lg:block">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Katalog Barang</h1>
@@ -60,14 +67,18 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             <p className="text-gray-600 mb-6">
               Coba ubah filter atau kata kunci pencarian Anda
             </p>
-            <a href="/catalog">
-              <button className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
-                Reset & Lihat Semua Barang
-              </button>
-            </a>
+            {/* Client-side link so the saved filters are cleared instead of restored */}
+            <Link
+              href="/catalog"
+              className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            >
+              Reset & Lihat Semua Barang
+            </Link>
           </div>
         )}
       </div>
+
+      <Footer showAdminLogin={!user} />
     </div>
   )
 }
