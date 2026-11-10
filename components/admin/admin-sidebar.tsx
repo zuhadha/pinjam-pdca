@@ -17,7 +17,10 @@ import {
   Inbox,
   Menu,
   X,
-  Tags
+  Tags,
+  DoorOpen,
+  CalendarDays,
+  CalendarCheck
 } from 'lucide-react'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
@@ -36,11 +39,14 @@ const adminNavigation = [
   { name: 'Kelola Barang', href: '/admin/items', icon: Package },
   { name: 'Kelola Peminjaman', href: '/admin/requests', icon: FileText },
   { name: 'Kelola Permintaan', href: '/admin/permanent-requests', icon: FileText },
+  { name: 'Kelola Booking Ruangan', href: '/admin/room-bookings', icon: CalendarCheck },
+  { name: 'Kelola Ruangan', href: '/admin/rooms', icon: DoorOpen },
 ]
 
 const externalNavigation = [
   { name: 'Beranda Utama', href: '/', icon: Home },
   { name: 'Katalog Barang', href: '/catalog', icon: ShoppingBag },
+  { name: 'Jadwal Ruangan', href: '/rooms', icon: CalendarDays },
 ]
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
@@ -145,8 +151,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               </p>
               <div className="space-y-1">
                 {adminNavigation.map((item) => {
-                  const isActive = pathname === item.href || 
-                                  (item.href !== '/admin' && pathname?.startsWith(item.href))
+                  const isActive = item.href === '/admin' ? pathname === '/admin' : pathname?.startsWith(item.href)
                   const Icon = item.icon
                   
                   return (

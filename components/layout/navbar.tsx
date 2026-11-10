@@ -44,6 +44,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Beranda' },
     { href: '/catalog', label: 'Katalog' },
+    { href: '/rooms', label: 'Ruangan' },
   ]
 
   if (user) {
@@ -87,7 +88,7 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={`text-base font-medium transition-colors ${
-                  pathname === link.href
+                  pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
                     ? 'text-primary-600'
                     : 'text-gray-700 hover:text-primary-600'
                 }`}

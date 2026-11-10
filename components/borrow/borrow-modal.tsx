@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { useIsAdmin } from '@/lib/hooks/use-is-admin'
 import { toggleUnitInSelection, trimSelection } from '@/lib/utils/unit-selection'
 import { todayLocalDate } from '@/lib/utils/date-utils'
+import { RoomAgendaPicker } from '@/components/rooms/room-agenda-picker'
+import type { RoomAgendaOption } from '@/lib/actions/room-actions'
 
 interface BorrowModalProps {
   initialItems?: Array<{ 
@@ -199,6 +201,20 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Copy a room booking's borrower, schedule, room and agenda into the form
+  const applyRoomAgenda = (a: RoomAgendaOption) => {
+    setBorrowerName(a.borrower_name)
+    if (a.email) setBorrowerEmail(a.email)
+    // Use the list's own spelling when it matches; otherwise keep the booking's department
+    setBorrowerDivision(DIVISIONS.find((d) => d.toLowerCase() === a.department.trim().toLowerCase()) ?? a.department.trim())
+    setBorrowingType('same-day')
+    setDate(a.booking_date)
+    setStartTime(a.start_time)
+    setEndTime(a.end_time)
+    setUsageLocation(a.room_name)
+    setPurpose(a.agenda)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -468,6 +484,9 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
               </div>
             </div>
 
+            {/* Fill borrower, schedule, location and purpose from a room booking */}
+            {isBorrowable && <RoomAgendaPicker onPick={applyRoomAgenda} />}
+
             {/* Borrower Identity */}
             <div className="space-y-3">
               {/* <h3 className="font-semibold text-gray-900">Identitas Peminjam</h3> */}
@@ -512,7 +531,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
                     <SelectValue placeholder="Pilih divisi / departemen" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[160px]">
-                    {DIVISIONS.map((division) => (
+                    {(borrowerDivision && !DIVISIONS.includes(borrowerDivision) ? [...DIVISIONS, borrowerDivision] : DIVISIONS).map((division) => (
                       <SelectItem key={division} value={division}>
                         {division}
                       </SelectItem>
