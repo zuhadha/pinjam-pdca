@@ -110,13 +110,21 @@ function toggle(list: number[], value: number) {
 }
 
 /** Dashboard period filter: year, months (multi), weeks (multi) and chart grouping. */
-export function MonthFilter() {
+export function MonthFilter({
+  preserve = [],
+  storageKey = 'admin-dashboard-filters',
+}: {
+  /** query params from the current URL to carry over (e.g. the room section and its calendar) */
+  preserve?: string[]
+  /** where the last filters are remembered for this dashboard */
+  storageKey?: string
+} = {}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
   // Keep the chosen filters when coming back to the dashboard
-  useRestoreSearchParams('admin-dashboard-filters')
+  useRestoreSearchParams(storageKey)
 
   const thisYear = new Date().getFullYear()
   const year = parseInt(searchParams.get('year') || '', 10) || thisYear
@@ -142,13 +150,18 @@ export function MonthFilter() {
     const nextView = next.view ?? view
 
     const params = new URLSearchParams()
+    for (const key of preserve) {
+      const value = searchParams.get(key)
+      if (value) params.set(key, value)
+    }
     params.set('year', String(nextYear))
     if (nextMonths.length) params.set('months', nextMonths.join(','))
     if (nextWeeks.length) params.set('weeks', nextWeeks.join(','))
     if (nextView === 'week') params.set('view', 'week')
 
     startTransition(() => {
-      router.push(`/admin?${params.toString()}`)
+      // Stay at the same scroll position: the filter can sit below other content
+      router.push(`/admin?${params.toString()}`, { scroll: false })
     })
   }
 

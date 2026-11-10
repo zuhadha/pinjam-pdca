@@ -2,11 +2,13 @@ import { getAdminStats, getDashboardRequests } from '@/lib/actions/admin-actions
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, FileText, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
 import { MonthFilter } from '@/components/admin/month-filter'
+import { RoomDashboard } from '@/components/admin/rooms/room-dashboard'
 import {
   MONTH_LONG,
   formatWeekRange,
@@ -21,9 +23,30 @@ import {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; months?: string; weeks?: string; year?: string; view?: string }>
+  searchParams: Promise<{
+    month?: string
+    months?: string
+    weeks?: string
+    year?: string
+    view?: string
+    // room section
+    section?: string
+    cal?: string
+    date?: string
+    room?: string
+  }>
 }) {
   const params = await searchParams
+
+  // Room management moved to its own pages; keep old links (and emails) working
+  if (params.section === 'rooms') {
+    const q = new URLSearchParams()
+    if (params.cal) q.set('cal', params.cal)
+    if (params.date) q.set('date', params.date)
+    if (params.room) q.set('room', params.room)
+    redirect(`/admin/room-bookings${q.size ? `?${q}` : ''}`)
+  }
+
   const selectedYear = params.year ? parseInt(params.year) || new Date().getFullYear() : new Date().getFullYear()
   // `month` is the old single-month param, still accepted for saved links
   const selectedMonths = parseNumberList(params.months ?? params.month, 1, 12)
@@ -183,11 +206,13 @@ export default async function AdminDashboardPage({
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
-          <p className="text-gray-600 mt-2">Selamat datang di panel administrasi sistem peminjaman barang</p>
+          <p className="text-gray-600 mt-2">Ringkasan peminjaman barang dan booking ruangan</p>
         </div>
         {/* Period filter on its own row so every control has room */}
         <MonthFilter />
       </div>
+
+      <h2 className="text-2xl font-bold text-gray-900">Peminjaman Barang</h2>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,6 +289,11 @@ export default async function AdminDashboardPage({
         deptData={deptData}
         punctualityData={punctualityData}
       />
+
+      {/* Room bookings, same period filter */}
+      <div className="border-t border-gray-200 pt-8">
+        <RoomDashboard filter={{ year: selectedYear, months: selectedMonths, weeks: selectedWeeks, view: viewMode }} />
+      </div>
 
       {/* Recent Requests */}
       {/* <Card>
