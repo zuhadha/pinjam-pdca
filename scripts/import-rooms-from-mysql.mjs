@@ -8,10 +8,12 @@
  * were already imported are skipped.
  *
  * Source (pick one):
+ *   --sql ./coe.sql                              phpMyAdmin / mysqldump .sql export
  *   --mysql "mysql://user:pass@host:3306/coe"   needs `npm i -D mysql2` once
- *   --json ./mysql-export                        folder with rooms.json, room_images.json,
- *                                                borrow_rooms.json (plain arrays of rows, or
- *                                                phpMyAdmin "JSON" export files)
+ *   --json ./coe.json                            phpMyAdmin "JSON" export (one file holding the
+ *                                                rooms, room_images and borrow_rooms tables), or a
+ *                                                folder of export files / rooms.json,
+ *                                                room_images.json, borrow_rooms.json arrays
  * Options:
  *   --images-dir ../garudafood-space/public/rooms   upload room photos from here
  *   --from 2026-01-01                               only bookings on/after this date
@@ -20,7 +22,7 @@
  * Target: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from the environment or .env.local.
  *
  * Example:
- *   node scripts/import-rooms-from-mysql.mjs --json ./mysql-export \
+ *   node scripts/import-rooms-from-mysql.mjs --sql ~/Downloads/coe.sql \
  *     --images-dir ../garudafood-space/public/rooms --dry-run
  */
 import fs from 'node:fs'
@@ -39,6 +41,7 @@ const flag = (name) => args.includes(`--${name}`)
 
 const MYSQL_URL = opt('mysql') ?? process.env.MYSQL_URL
 const JSON_DIR = opt('json')
+const SQL_FILE = opt('sql')
 const IMAGES_DIR = opt('images-dir')
 const FROM_DATE = opt('from')
 const DRY = flag('dry-run')
@@ -49,8 +52,8 @@ try {
   /* no .env.local; rely on the environment */
 }
 
-if (!MYSQL_URL && !JSON_DIR) {
-  console.error('Give a source: --mysql <url> or --json <folder>. See the header of this file.')
+if (!MYSQL_URL && !JSON_DIR && !SQL_FILE) {
+  console.error('Give a source: --sql <file>, --json <file or folder> or --mysql <url>. See the header of this file.')
   process.exit(1)
 }
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -64,23 +67,139 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 // ─── Read the MySQL tables ───────────────────────────────────────────────────
 
-/** Accepts a plain array of rows or a phpMyAdmin JSON export. */
-function readJsonTable(file) {
-  const full = path.join(JSON_DIR, file)
-  if (!fs.existsSync(full)) return []
-  const parsed = JSON.parse(fs.readFileSync(full, 'utf8'))
-  if (Array.isArray(parsed) && parsed.some((x) => x && x.type === 'table')) {
-    return parsed.find((x) => x.type === 'table')?.data ?? []
+/**
+ * Reads tables from JSON: a phpMyAdmin export (any number of tables in one file),
+ * or a plain array of rows named after its table (rooms.json, borrow_rooms.json, ...).
+ * JSON_DIR may be one file or a folder of such files.
+ */
+function readJsonTables() {
+  const stat = fs.statSync(JSON_DIR, { throwIfNoEntry: false })
+  if (!stat) {
+    console.error(`Not found: ${JSON_DIR}`)
+    process.exit(1)
   }
-  return Array.isArray(parsed) ? parsed : []
+  const files = stat.isDirectory()
+    ? fs.readdirSync(JSON_DIR).filter((f) => f.toLowerCase().endsWith('.json')).map((f) => path.join(JSON_DIR, f))
+    : [JSON_DIR]
+  const tables = {}
+  for (const file of files) {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (Array.isArray(parsed) && parsed.some((x) => x && x.type === 'table')) {
+      for (const t of parsed.filter((x) => x && x.type === 'table')) tables[t.name] = t.data ?? []
+    } else if (Array.isArray(parsed)) {
+      tables[path.basename(file, '.json')] = parsed
+    }
+  }
+  return tables
+}
+
+/**
+ * Reads the INSERT rows of a .sql dump (phpMyAdmin or mysqldump) into
+ * { tableName: [{ column: value }] }. Values come back as strings (numbers too)
+ * or null, the same shape the JSON export gives. Column names are taken from the
+ * INSERT column list, or from the table's CREATE TABLE when the list is missing.
+ */
+function readSqlDump(file) {
+  const sql = fs.readFileSync(file, 'utf8')
+  const tables = {}
+  const createColumns = {}
+
+  // Column order from CREATE TABLE, for INSERTs written without a column list
+  for (const m of sql.matchAll(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?`?(\w+)`?\s*\(([\s\S]*?)\)\s*(?:ENGINE|;)/gi)) {
+    createColumns[m[1]] = m[2]
+      .split('\n')
+      .map((line) => line.trim().match(/^`(\w+)`\s/))
+      .filter(Boolean)
+      .map((x) => x[1])
+  }
+
+  const ESCAPES = { 0: '\0', b: '\b', n: '\n', r: '\r', t: '\t', Z: '\x1a' }
+  const insertRe = /INSERT\s+(?:IGNORE\s+)?INTO\s+`?(\w+)`?\s*(?:\(([^)]*)\))?\s*VALUES\s*/gi
+  let m
+  while ((m = insertRe.exec(sql))) {
+    const table = m[1]
+    const columns = m[2] ? m[2].split(',').map((c) => c.trim().replace(/`/g, '')) : createColumns[table]
+    if (!columns) throw new Error(`No column list for ${table}`)
+    const rows = (tables[table] ??= [])
+    let i = insertRe.lastIndex
+    // Parse ( ... ), ( ... ) ... ; one value at a time
+    while (i < sql.length) {
+      while (/\s|,/.test(sql[i])) i++
+      if (sql[i] === ';') break
+      if (sql[i] !== '(') throw new Error(`Unexpected "${sql.slice(i, i + 20)}" in INSERT into ${table}`)
+      i++
+      const values = []
+      for (;;) {
+        while (/\s/.test(sql[i])) i++
+        if (sql[i] === "'") {
+          let v = ''
+          i++
+          for (;;) {
+            const c = sql[i]
+            if (c === '\\') {
+              const n = sql[i + 1]
+              v += ESCAPES[n] ?? n
+              i += 2
+            } else if (c === "'" && sql[i + 1] === "'") {
+              v += "'"
+              i += 2
+            } else if (c === "'") {
+              i++
+              break
+            } else {
+              v += c
+              i++
+            }
+          }
+          values.push(v)
+        } else {
+          let j = i
+          while (sql[j] !== ',' && sql[j] !== ')') j++
+          const raw = sql.slice(i, j).trim()
+          values.push(/^null$/i.test(raw) ? null : raw)
+          i = j
+        }
+        while (/\s/.test(sql[i])) i++
+        if (sql[i] === ',') {
+          i++
+          continue
+        }
+        if (sql[i] === ')') {
+          i++
+          break
+        }
+        throw new Error(`Unexpected "${sql.slice(i, i + 20)}" in INSERT into ${table}`)
+      }
+      rows.push(Object.fromEntries(columns.map((c, k) => [c, values[k] ?? null])))
+    }
+    insertRe.lastIndex = i
+  }
+  return tables
 }
 
 async function loadSource() {
+  if (SQL_FILE) {
+    if (!fs.existsSync(SQL_FILE)) {
+      console.error(`Not found: ${SQL_FILE}`)
+      process.exit(1)
+    }
+    const tables = readSqlDump(SQL_FILE)
+    if (!tables.borrow_rooms && !tables.rooms) {
+      console.error(`No rooms or borrow_rooms rows found in ${SQL_FILE}. Tables seen: ${Object.keys(tables).join(', ') || 'none'}`)
+      process.exit(1)
+    }
+    return { rooms: tables.rooms ?? [], images: tables.room_images ?? [], bookings: tables.borrow_rooms ?? [] }
+  }
   if (JSON_DIR) {
+    const tables = readJsonTables()
+    if (!tables.borrow_rooms && !tables.rooms) {
+      console.error(`No rooms or borrow_rooms table found in ${JSON_DIR}. Tables seen: ${Object.keys(tables).join(', ') || 'none'}`)
+      process.exit(1)
+    }
     return {
-      rooms: readJsonTable('rooms.json'),
-      images: readJsonTable('room_images.json'),
-      bookings: readJsonTable('borrow_rooms.json'),
+      rooms: tables.rooms ?? [],
+      images: tables.room_images ?? [],
+      bookings: tables.borrow_rooms ?? [],
     }
   }
   let mysql

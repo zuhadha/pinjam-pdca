@@ -34,13 +34,17 @@ Room booking from the old Laravel app (`garudafood-space`, "COE Rooms") now live
 ## Importing from the old MySQL database
 
 ```bash
+# Easiest: the .sql file exported from phpMyAdmin (XAMPP)
+node scripts/import-rooms-from-mysql.mjs --sql ~/Downloads/coe.sql \
+  --images-dir ../garudafood-space/public/rooms --dry-run
+
 # Option A: straight from MySQL
 npm i -D mysql2
 node scripts/import-rooms-from-mysql.mjs --mysql "mysql://user:pass@host:3306/coe" \
   --images-dir ../garudafood-space/public/rooms --dry-run
 
-# Option B: from phpMyAdmin JSON exports of rooms, room_images, borrow_rooms
-node scripts/import-rooms-from-mysql.mjs --json ./mysql-export \
+# Option B: from a phpMyAdmin JSON export of rooms, room_images, borrow_rooms
+node scripts/import-rooms-from-mysql.mjs --json ~/Downloads/coe.json \
   --images-dir ../garudafood-space/public/rooms --dry-run
 ```
 
