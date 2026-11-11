@@ -61,7 +61,7 @@ export interface ReservationInput {
   borrowerName: string
   department: string
   phoneNumber: string
-  email: string
+  email?: string
   agenda: string
   participants?: string
   peopleCount?: number | null

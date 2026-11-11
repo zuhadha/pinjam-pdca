@@ -20,7 +20,7 @@ Room booking from the old Laravel app (`garudafood-space`, "COE Rooms") now live
     - **Booking ulang**: open the public form filled with this booking.
   - **Kelola Ruangan** (`/admin/rooms`): room list with search and status/location filters, create (`/admin/rooms/create`) and edit (`/admin/rooms/edit/<id>`) pages with photos, in the same layout as Kelola Barang. Delete is soft and refused while a room has upcoming bookings.
   - Old `/admin?section=rooms` links redirect to Kelola Booking Ruangan.
-- **Emails** (Brevo, same as item borrowing): borrower confirmation, admin notification, "you're off the waiting list", "cancelled by admin", and an admin alert when a borrower frees a slot that has people waiting. Admin recipients come from the existing `admin_notification_emails` setting.
+- **Emails** (Brevo, same as item borrowing): borrower confirmation, admin notification, "you're off the waiting list", "cancelled by admin", and an admin alert when a borrower frees a slot that has people waiting. Admin recipients come from the existing `admin_notification_emails` setting. The borrower's email is optional on the form for now; without one, the borrower gets no emails (the success page still shows the manage link).
 
 ## Setup
 

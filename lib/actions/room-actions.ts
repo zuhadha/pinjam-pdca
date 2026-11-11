@@ -288,12 +288,13 @@ export async function createRoomReservation(input: ReservationInput): Promise<
   const name = input.borrowerName?.trim()
   const department = input.department?.trim()
   const phone = input.phoneNumber?.replace(/[\s-]/g, '')
-  const email = input.email?.trim().toLowerCase()
+  // Optional for now; without it the borrower gets no emails
+  const email = input.email?.trim().toLowerCase() || null
   const agenda = input.agenda?.trim()
   if (!name) return { error: 'Nama harus diisi' }
   if (!department) return { error: 'Departemen harus diisi' }
   if (!phone || !/^\+?\d{10,15}$/.test(phone)) return { error: 'Nomor telepon 10–15 digit' }
-  if (!email || !EMAIL_RE.test(email)) return { error: 'Format email tidak valid' }
+  if (email && !EMAIL_RE.test(email)) return { error: 'Format email tidak valid' }
   if (!agenda) return { error: 'Agenda harus diisi' }
   const peopleCount = input.peopleCount ? Math.floor(Number(input.peopleCount)) : null
   if (peopleCount !== null && (!Number.isFinite(peopleCount) || peopleCount < 1)) {
@@ -310,7 +311,7 @@ export async function createRoomReservation(input: ReservationInput): Promise<
       borrower_name: name,
       department,
       phone_number: phone,
-      email,
+      email: email ?? '',
       agenda,
       participants: input.participants?.trim() ?? '',
       people_count: peopleCount ?? '',
