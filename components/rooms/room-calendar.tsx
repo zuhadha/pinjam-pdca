@@ -28,7 +28,6 @@ import {
   singleDayByDate,
   viewRange,
   weekSegments,
-  layoutWeek,
   type BookingSpan,
   type DateRange,
   type SpanSegment,
@@ -40,11 +39,11 @@ const DAY_END = timeToMinutes(ROOM_DAY_END)
 const DAY_SPAN = DAY_END - DAY_START
 const HOURS = Array.from({ length: DAY_SPAN / 60 + 1 }, (_, i) => DAY_START + i * 60)
 const SLOTS = Array.from({ length: DAY_SPAN / ROOM_SLOT_MINUTES }, (_, i) => DAY_START + i * ROOM_SLOT_MINUTES)
-const WEEK_HOUR_PX = 56
+const HOUR_PX = 56
 
 export type { DateRange }
 
-type SlotRenderer = (date: string, start: number, room: number | null, className: string, style: React.CSSProperties) => React.ReactNode
+type SlotRenderer = (date: string, start: number | undefined, room: number | null, className: string, style: React.CSSProperties) => React.ReactNode
 
 export interface RoomCalendarProps {
   view: CalendarView
@@ -60,7 +59,7 @@ export interface RoomCalendarProps {
   /** called when a booking is clicked (with its date range when merged); without it a read-only detail opens */
   onSelect?: (booking: CalendarBooking, range?: DateRange) => void
   /** called when an empty slot is clicked; without it the slot links to the booking form */
-  onSlot?: (slot: { date: string; start: string; roomId: number | null }) => void
+  onSlot?: (slot: { date: string; start?: string; roomId: number | null }) => void
   /** shows "Booking ulang" in the booking detail; fills the form with this booking except its date */
   onRebook?: (booking: CalendarBooking) => void
 }
@@ -111,20 +110,20 @@ export function RoomCalendar(props: RoomCalendarProps) {
     return `/rooms?${q.toString()}#booking`
   }
 
-  /** Empty half-hour cell: fills the form on this page, or links to it. Mouse only; the form is the keyboard path. */
-  const slot = (d: string, start: number, room: number | null, className: string, style: React.CSSProperties) =>
+  /** Empty half-hour cell (or a whole day in week view): fills the form on this page, or links to it. Mouse only; the form is the keyboard path. */
+  const slot = (d: string, start: number | undefined, room: number | null, className: string, style: React.CSSProperties) =>
     onSlot ? (
       <button
-        key={start}
+        key={`${d}-${start ?? ''}`}
         type="button"
         tabIndex={-1}
         aria-hidden
-        onClick={() => onSlot({ date: d, start: minutesToTime(start), roomId: room ?? roomId })}
+        onClick={() => onSlot({ date: d, start: start === undefined ? undefined : minutesToTime(start), roomId: room ?? roomId })}
         className={className}
         style={style}
       />
     ) : (
-      <Link key={start} href={bookHref(d, start, room)} tabIndex={-1} aria-hidden className={className} style={style} />
+      <Link key={`${d}-${start ?? ''}`} href={bookHref(d, start, room)} tabIndex={-1} aria-hidden className={className} style={style} />
     )
 
   const open = (b: CalendarBooking, range?: DateRange) =>
@@ -260,7 +259,7 @@ export function RoomCalendar(props: RoomCalendarProps) {
         <WeekGrid
           from={from}
           today={today}
-          nowMin={nowMin}
+          rooms={visibleRooms}
           spans={spans}
           roomName={roomName}
           showRoom={showRoomOnBlock}
@@ -364,7 +363,7 @@ function BookingBlock({
   )
 }
 
-// ─── Day: rooms across, hours down (same grid as the week view) ──────────────
+// ─── Day: rooms across, hours down ───────────────────────────────────────────
 
 function DayTimeline({
   date,
@@ -385,8 +384,8 @@ function DayTimeline({
   slot: SlotRenderer
   pastDay: boolean
 }) {
-  const height = (DAY_SPAN / 60) * WEEK_HOUR_PX
-  const y = (min: number) => ((min - DAY_START) / 60) * WEEK_HOUR_PX
+  const height = (DAY_SPAN / 60) * HOUR_PX
+  const y = (min: number) => ((min - DAY_START) / 60) * HOUR_PX
   const showNow = isToday && nowMin !== null && nowMin >= DAY_START && nowMin <= DAY_END
 
   if (!rooms.length) {
@@ -427,7 +426,7 @@ function DayTimeline({
                 SLOTS.map((s) =>
                   slot(date, s, room.id, 'absolute inset-x-0 hover:bg-gray-100/70', {
                     top: y(s),
-                    height: (ROOM_SLOT_MINUTES / 60) * WEEK_HOUR_PX,
+                    height: (ROOM_SLOT_MINUTES / 60) * HOUR_PX,
                   })
                 )}
               {showNow && <span className="absolute inset-x-0 z-10 h-px bg-blue-600" style={{ top: y(nowMin!) }} aria-hidden />}
@@ -523,12 +522,12 @@ function SpanBar({
   )
 }
 
-// ─── Week: days across, hours down ───────────────────────────────────────────
+// ─── Week: rooms down, days across ───────────────────────────────────────────
 
 function WeekGrid({
   from,
   today,
-  nowMin,
+  rooms,
   spans,
   roomName,
   showRoom,
@@ -538,7 +537,7 @@ function WeekGrid({
 }: {
   from: string
   today: string
-  nowMin: number | null
+  rooms: Room[]
   spans: BookingSpan[]
   roomName: Map<number, string>
   showRoom: boolean
@@ -547,96 +546,101 @@ function WeekGrid({
   dayHref: (d: string) => string
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i))
-  const height = (DAY_SPAN / 60) * WEEK_HOUR_PX
-  const y = (min: number) => ((min - DAY_START) / 60) * WEEK_HOUR_PX
   const singles = singleDayByDate(spans)
   const { segments } = weekSegments(spans, from)
-  const items = layoutWeek(spans, from)
-  const COL = 100 / 7
+  // Each day keeps at least 120px; on narrow screens the grid scrolls sideways with the rooms pinned
+  const columns = { gridTemplateColumns: '160px repeat(7, minmax(120px, 1fr))' }
+  const dayBg = (d: string, i: number) => (d === today ? 'bg-blue-50/50' : i >= 5 ? 'bg-gray-50' : '')
 
   return (
     <>
-      {/* Desktop and tablet: time grid */}
-      <div className="hidden overflow-hidden rounded-md border border-gray-200 bg-white md:block">
-        <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200">
-          <div />
-          {days.map((d, i) => (
-            <Link
-              key={d}
-              scroll={false}
-              href={dayHref(d)}
-              className={`border-l border-gray-100 px-2 py-2 text-sm hover:bg-gray-50 ${i >= 5 ? 'bg-gray-50' : ''}`}
-            >
-              <span className="text-gray-500">{DAY_NAMES_SHORT[i]}</span>{' '}
-              <span className={`tabular-nums ${d === today ? 'rounded bg-blue-600 px-1.5 py-0.5 font-semibold text-white' : 'font-medium text-gray-900'}`}>
-                {Number(d.slice(8))}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))]">
-          <div className="relative" style={{ height, gridColumn: 1, gridRow: 1 }}>
-            {HOURS.slice(0, -1).map((h) => (
-              <span key={h} className="absolute right-2 -translate-y-1/2 text-xs tabular-nums text-gray-500" style={{ top: Math.max(8, y(h)) }}>
-                {minutesToTime(h)}
-              </span>
+      {/* Desktop and tablet: one row per room, one column per day */}
+      {rooms.length ? (
+        <div className="hidden overflow-x-auto rounded-md border border-gray-200 bg-white md:block">
+          <div className="grid border-b border-gray-200" style={columns}>
+            <div className="sticky left-0 z-20 border-r border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">Ruangan</div>
+            {days.map((d, i) => (
+              <Link
+                key={d}
+                scroll={false}
+                href={dayHref(d)}
+                className={`border-l border-gray-100 px-2 py-2 text-sm hover:bg-gray-100 ${dayBg(d, i)}`}
+              >
+                <span className="text-gray-500">{DAY_NAMES_SHORT[i]}</span>{' '}
+                <span className={`tabular-nums ${d === today ? 'rounded bg-blue-600 px-1.5 py-0.5 font-semibold text-white' : 'font-medium text-gray-900'}`}>
+                  {Number(d.slice(8))}
+                </span>
+              </Link>
             ))}
           </div>
-          {days.map((d, i) => {
-            const past = d < today
+
+          {rooms.map((room) => {
+            const roomSpans = spans.filter((s) => s.first.room_id === room.id)
+            const roomSingles = singleDayByDate(roomSpans)
+            const { segments: bars, lanes } = weekSegments(roomSpans, from)
             return (
               <div
-                key={d}
-                className={`relative border-l border-gray-100 ${i >= 5 ? 'bg-gray-50' : ''}`}
-                style={{ height, gridColumn: i + 2, gridRow: 1 }}
+                key={room.id}
+                className="grid min-h-16 border-b border-gray-100 last:border-b-0"
+                style={{ ...columns, gridTemplateRows: `${lanes ? `repeat(${lanes}, 24px) ` : ''}1fr` }}
               >
-                {HOURS.slice(1, -1).map((h) => (
-                  <span key={h} className="absolute inset-x-0 h-px bg-gray-100" style={{ top: y(h) }} aria-hidden />
+                <div
+                  className="sticky left-0 z-20 min-w-0 border-r border-gray-200 bg-white px-3 py-2"
+                  style={{ gridColumn: 1, gridRow: '1 / -1' }}
+                >
+                  <p className="truncate text-sm font-medium text-gray-900" title={room.name}>
+                    {room.name}
+                  </p>
+                </div>
+                {/* Day cells, behind the bookings; an empty spot opens the form for that room and day */}
+                {days.map((d, i) => {
+                  const className = `border-l border-gray-100 ${dayBg(d, i)}`
+                  const style = { gridColumn: i + 2, gridRow: '1 / -1' }
+                  return d < today ? (
+                    <div key={d} className={className} style={style} aria-hidden />
+                  ) : (
+                    slot(d, undefined, room.id, `${className} hover:bg-gray-100/70`, style)
+                  )
+                })}
+                {/* A run of days is one bar across its columns */}
+                {bars.map((seg) => (
+                  <SpanBar
+                    key={seg.span.key}
+                    segment={seg}
+                    onOpen={onOpen}
+                    className="relative mx-0.5 mt-1 h-[20px]"
+                    style={{ gridColumn: `${seg.start + 2} / ${seg.end + 3}`, gridRow: seg.lane + 1 }}
+                  />
                 ))}
-                {!past &&
-                  SLOTS.map((s) =>
-                    slot(d, s, null, 'absolute inset-x-0 hover:bg-gray-100/70', {
-                      top: y(s),
-                      height: (ROOM_SLOT_MINUTES / 60) * WEEK_HOUR_PX,
-                    })
-                  )}
-                {d === today && nowMin !== null && nowMin >= DAY_START && nowMin <= DAY_END && (
-                  <span className="absolute inset-x-0 z-10 h-px bg-blue-600" style={{ top: y(nowMin) }} aria-hidden />
-                )}
+                {days.map((d, i) => {
+                  const list = roomSingles.get(d) ?? []
+                  if (!list.length) return null
+                  return (
+                    <div
+                      key={`s-${d}`}
+                      className="pointer-events-none relative min-w-0 space-y-1 p-1"
+                      style={{ gridColumn: i + 2, gridRow: lanes + 1 }}
+                    >
+                      {list.map((b) => (
+                        <BookingBlock
+                          key={b.id}
+                          booking={b}
+                          onOpen={onOpen}
+                          className="pointer-events-auto block w-full px-1.5 py-1"
+                        />
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
-          {/* Bookings on top of the day columns; a run of days is one block across its columns */}
-          <div className="pointer-events-none relative" style={{ gridColumn: '2 / 9', gridRow: 1, height }}>
-            {[...items]
-              // Multi-day blocks first, so single bookings that clash with them are drawn on top
-              .sort((a, b) => Number(!!b.range) - Number(!!a.range) || a.lane - b.lane)
-              .map(({ booking, range, start, end, lane, lanes }) => {
-              const s = timeToMinutes(booking.start_time)
-              const e = timeToMinutes(booking.end_time)
-              const h = y(e) - y(s)
-              // A run of days in the first lane keeps its full width; a clash cascades over it
-              const fullWidth = !!range && lane === 0
-              const left = start * COL + (fullWidth ? 0 : (lane / lanes) * COL)
-              const right = fullWidth ? (end + 1) * COL : end * COL + ((lane + 1) / lanes) * COL
-              return (
-                <BookingBlock
-                  key={`${booking.id}-${range?.from ?? ''}`}
-                  booking={booking}
-                  range={range}
-                  roomName={showRoom ? roomName.get(booking.room_id) : undefined}
-                  compact={h < 40 || (lanes >= 3 && start === end)}
-                  wrap={h >= 40}
-                  onOpen={onOpen}
-                  className={`pointer-events-auto absolute flex flex-col justify-start px-1.5 py-1 ${lane > 0 ? 'ring-2 ring-white' : ''}`}
-                  style={{ top: y(s) + 1, height: h - 2, left: `calc(${left}% + 2px)`, width: `calc(${right - left}% - 4px)` }}
-                />
-              )
-              })}
-          </div>
         </div>
-      </div>
+      ) : (
+        <p className="hidden rounded-md border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-600 md:block">
+          Belum ada ruangan.
+        </p>
+      )}
 
       {/* Phone: one list per day; a multi-day booking is listed once, on its first day this week */}
       <ol className="space-y-4 md:hidden">
