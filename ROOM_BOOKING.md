@@ -10,7 +10,7 @@ Room booking from the old Laravel app (`garudafood-space`, "COE Rooms") now live
 - **Live availability.** While filling the form, the borrower sees every date marked free or waiting, and what it clashes with.
 - **Booking ulang.** Click a booking in the calendar, then "Booking ulang": the form is filled with that booking's room, time, borrower, contact, agenda, participants, notes and repeat type. Only the date is left to choose. Admins get the same button in their booking modal (it opens `/rooms?rebook=<id>`).
 - **Calendar search** (public and admin): filters the calendar by agenda, borrower, department or room as you type. Calendar navigation and filters keep the page's scroll position.
-- **Calendar** under the form on `/rooms`: day (one column per room, hours down), week and month views, filtered by room. Waitlisted bookings show with a dashed outline. In week and month views, consecutive days of one booking (same room, time and status, e.g. an audit on 12–14 Nov) are drawn as one item: in week view one block across its days at its real time, in month view one bar. The popup of a repeating booking lists all its dates (e.g. Kam 12, Jum 13, Sen 16 Nov 2026), even where a gap such as a weekend splits the blocks. Phone and email are never shown publicly.
+- **Calendar** under the form on `/rooms`: day (one column per room, hours down), week (one row per room, days across) and month views, filtered by room. Waitlisted bookings show with a dashed outline. In week and month views, consecutive days of one booking (same room, time and status, e.g. an audit on 12–14 Nov) are drawn as one item: in week view one bar across its days in that room's row, in month view one bar. The popup of a repeating booking lists all its dates (e.g. Kam 12, Jum 13, Sen 16 Nov 2026), even where a gap such as a weekend splits the blocks. Phone and email are never shown publicly.
 - **Borrower's page** at `/rooms/booking/<token>` (the link is also emailed): see every date, its status and queue position, and cancel some or all upcoming dates.
 - **Dashboard ruangan** on the admin home (`/admin`, "Dashboard Admin"), below the item dashboard. The period filter at the top (year, months, weeks, monthly/weekly trend) drives both. Counts confirmed bookings by the day the room is used: cards (total bookings, total booked room-days, today, this week, this month), trend line, top 3 rooms, top 3 departments, room share pie (top 4 + Lainnya), and an hour-by-room heatmap (08:00–17:00).
 - **Admin pages** (in the sidebar):
@@ -20,7 +20,7 @@ Room booking from the old Laravel app (`garudafood-space`, "COE Rooms") now live
     - **Booking ulang**: open the public form filled with this booking.
   - **Kelola Ruangan** (`/admin/rooms`): room list with search and status/location filters, create (`/admin/rooms/create`) and edit (`/admin/rooms/edit/<id>`) pages with photos, in the same layout as Kelola Barang. Delete is soft and refused while a room has upcoming bookings.
   - Old `/admin?section=rooms` links redirect to Kelola Booking Ruangan.
-- **Emails** (Brevo, same as item borrowing): borrower confirmation, admin notification, "you're off the waiting list", "cancelled by admin", and an admin alert when a borrower frees a slot that has people waiting. Admin recipients come from the existing `admin_notification_emails` setting.
+- **Emails** (Brevo, same as item borrowing): borrower confirmation, admin notification, "you're off the waiting list", "cancelled by admin", and an admin alert when a borrower frees a slot that has people waiting. Admin recipients come from the existing `admin_notification_emails` setting. The borrower's email is optional on the form for now; without one, the borrower gets no emails (the success page still shows the manage link).
 
 ## Setup
 
@@ -34,13 +34,17 @@ Room booking from the old Laravel app (`garudafood-space`, "COE Rooms") now live
 ## Importing from the old MySQL database
 
 ```bash
+# Easiest: the .sql file exported from phpMyAdmin (XAMPP)
+node scripts/import-rooms-from-mysql.mjs --sql ~/Downloads/coe.sql \
+  --images-dir ../garudafood-space/public/rooms --dry-run
+
 # Option A: straight from MySQL
 npm i -D mysql2
 node scripts/import-rooms-from-mysql.mjs --mysql "mysql://user:pass@host:3306/coe" \
   --images-dir ../garudafood-space/public/rooms --dry-run
 
-# Option B: from phpMyAdmin JSON exports of rooms, room_images, borrow_rooms
-node scripts/import-rooms-from-mysql.mjs --json ./mysql-export \
+# Option B: from a phpMyAdmin JSON export of rooms, room_images, borrow_rooms
+node scripts/import-rooms-from-mysql.mjs --json ~/Downloads/coe.json \
   --images-dir ../garudafood-space/public/rooms --dry-run
 ```
 

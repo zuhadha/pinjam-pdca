@@ -312,21 +312,16 @@ export function BookingForm({ rooms, today, isAdmin, prefill, ref }: Props) {
       </div>
       <div>
         <label htmlFor="email" className={labelClass}>
-          Email
+          Email {optional}
         </label>
         <input
           id="email"
-          required
           type="email"
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          aria-describedby="email-hint"
           className={inputClass}
         />
-        <p id="email-hint" className="mt-1 text-xs text-gray-600">
-          Link untuk membatalkan booking dikirim ke sini.
-        </p>
       </div>
 
       <div>
