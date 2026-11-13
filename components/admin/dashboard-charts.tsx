@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import {
   BarChart,
   Bar,
-  AreaChart,
+  ComposedChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,6 +15,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  LabelList,
   Legend,
 } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,9 +23,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b']
 const PUNCTUALITY_COLORS = ['#10b981', '#ef4444'] // Green for On-Time, Red for Late
 
+interface ValueLabelProps {
+  x?: number | string
+  y?: number | string
+  value?: number | string
+  bg?: string
+  color?: string
+}
+
+function ValueLabel({ x, y, value, bg, color }: ValueLabelProps) {
+  if (x == null || y == null || value == null) return null
+  const cx = Number(x)
+  const cy = Number(y)
+  const text = String(value)
+  const width = text.length * 9 + 12
+  const height = 20
+  return (
+    <g>
+      <rect x={cx - width / 2} y={cy - height / 2} width={width} height={height} rx={5} fill={bg} />
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={14}
+        fontWeight={600}
+        fill={color}
+      >
+        {text}
+      </text>
+    </g>
+  )
+}
+
 interface DashboardChartsProps {
   periodLabel: string
-  trendData: { date: string; total: number; range?: string }[]
+  trendData: { date: string; total: number; onTime: number; late: number; range?: string }[]
   trendDescription?: string
   categoryData: { name: string; value: number }[]
   topItemsData: { name: string; value: number }[]
@@ -39,6 +75,8 @@ export function DashboardCharts({
   deptData,
   punctualityData,
 }: DashboardChartsProps) {
+  const [showReturnStatus, setShowReturnStatus] = useState(true)
+  const [showTotal, setShowTotal] = useState(true)
 
   return (
     <div className="flex flex-col gap-6 mt-8">
@@ -47,16 +85,70 @@ export function DashboardCharts({
         {/* 1. Trend Peminjaman (Area Chart with Gradient) */}
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold text-gray-800">Tren Peminjaman</CardTitle>
-            <CardDescription>
-              {trendDescription || 'Intensitas peminjaman dari waktu ke waktu'}
-              <span className="text-gray-400"> · {periodLabel}</span>
-            </CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg font-semibold text-gray-800">Tren Peminjaman</CardTitle>
+                <CardDescription>
+                  {trendDescription || 'Intensitas peminjaman dari waktu ke waktu'}
+                  <span className="text-gray-400"> · {periodLabel}</span>
+                </CardDescription>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showTotal}
+                  onClick={() => setShowTotal((v) => !v)}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    showTotal
+                      ? 'border-blue-200 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-500'
+                  }`}
+                >
+                  <span
+                    className={`relative h-4 w-7 rounded-full transition-colors ${
+                      showTotal ? 'bg-blue-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                        showTotal ? 'left-3.5' : 'left-0.5'
+                      }`}
+                    />
+                  </span>
+                  Total pinjam
+                </button>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showReturnStatus}
+                  onClick={() => setShowReturnStatus((v) => !v)}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    showReturnStatus
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-500'
+                  }`}
+                >
+                  <span
+                    className={`relative h-4 w-7 rounded-full transition-colors ${
+                      showReturnStatus ? 'bg-emerald-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                        showReturnStatus ? 'left-3.5' : 'left-0.5'
+                      }`}
+                    />
+                  </span>
+                  Status kembali
+                </button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={trendData} margin={{ top: 24, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -65,7 +157,20 @@ export function DashboardCharts({
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} tickMargin={10} minTickGap={20} />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                  {showTotal && (
+                    <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                  )}
+                  {showReturnStatus && (
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      allowDecimals={false}
+                      width={30}
+                    />
+                  )}
                   <Tooltip
                     cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -74,18 +179,69 @@ export function DashboardCharts({
                       const range = payload?.[0]?.payload?.range
                       return range && range !== label ? `${label} · ${range}` : label
                     }}
-                    formatter={(value) => [value, 'Peminjaman']}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="total" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorTotal)"
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
-                  />
-                </AreaChart>
+                  {(showTotal || showReturnStatus) && (
+                    <Legend iconType="line" wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+                  )}
+                  {showTotal && (
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="total"
+                      name="Peminjaman"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorTotal)"
+                      activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
+                    >
+                      <LabelList
+                        dataKey="total"
+                        position="top"
+                        offset={10}
+                        content={<ValueLabel bg="#dbeafe" color="#1d4ed8" />}
+                      />
+                    </Area>
+                  )}
+                  {showReturnStatus && (
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="onTime"
+                      name="Tepat Waktu"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 5, strokeWidth: 0, fill: '#10b981' }}
+                    >
+                      <LabelList
+                        dataKey="onTime"
+                        position="top"
+                        offset={10}
+                        content={<ValueLabel bg="#d1fae5" color="#047857" />}
+                      />
+                    </Line>
+                  )}
+                  {showReturnStatus && (
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="late"
+                      name="Terlambat"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 5, strokeWidth: 0, fill: '#ef4444' }}
+                    >
+                      <LabelList
+                        dataKey="late"
+                        position="bottom"
+                        offset={10}
+                        content={<ValueLabel bg="#fee2e2" color="#b91c1c" />}
+                      />
+                    </Line>
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
