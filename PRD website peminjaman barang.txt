@@ -393,3 +393,5 @@ User → pilih barang → form pinjam → request dibuat → admin approve → b
 | Load dashboard             | < 3 detik  |
 | Akurasi stok               | 100%       |
 | Error rate                 | < 0.1%     |
+
+# trigger deploy vercel
