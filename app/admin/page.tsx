@@ -84,7 +84,7 @@ export default async function AdminDashboardPage({
 
   // 1. Tren Peminjaman — mengikuti filter & mode tampilan
   // Mingguan: per nomor minggu. Bulanan: per tanggal jika 1 bulan dipilih, selain itu per bulan.
-  let trendData: { date: string; total: number; range?: string }[]
+  let trendData: { date: string; total: number; onTime: number; late: number; range?: string }[]
   let trendDescription: string
 
   if (viewMode === 'week') {
@@ -97,6 +97,8 @@ export default async function AdminDashboardPage({
     trendData = weeks.map((w) => ({
       date: `W${w}`,
       total: counts.get(w) || 0,
+      onTime: 0,
+      late: 0,
       range: formatWeekRange(selectedYear, w),
     }))
     trendDescription = 'Jumlah peminjaman per minggu'
@@ -111,6 +113,8 @@ export default async function AdminDashboardPage({
     trendData = Array.from({ length: daysInMonth }, (_, i) => ({
       date: String(i + 1).padStart(2, '0'),
       total: counts.get(i + 1) || 0,
+      onTime: 0,
+      late: 0,
       range: `${i + 1} ${MONTH_LONG[month - 1]}`,
     }))
     trendDescription = `Jumlah peminjaman per hari · ${MONTH_LONG[month - 1]} ${selectedYear}`
@@ -124,10 +128,31 @@ export default async function AdminDashboardPage({
     trendData = months.map((m) => ({
       date: MONTH_LONG[m - 1].slice(0, 3),
       total: counts.get(m) || 0,
+      onTime: 0,
+      late: 0,
       range: `${MONTH_LONG[m - 1]} ${selectedYear}`,
     }))
     trendDescription = 'Jumlah peminjaman per bulan'
   }
+
+  // Return status per bucket (on-time vs late), grouped by the borrowing date
+  // so the two lines line up with the "total" trend above.
+  const trendBucketKey = (d: Date) => {
+    if (viewMode === 'week') return `W${weekOfYear(d)}`
+    if (selectedMonths.length === 1) return String(d.getDate()).padStart(2, '0')
+    return MONTH_LONG[d.getMonth()].slice(0, 3)
+  }
+  const trendByLabel = new Map(trendData.map((t) => [t.date, t]))
+  chartData.forEach((r: any) => {
+    if (!r.return_verified_at || !r.end_datetime) return
+    const bucket = trendByLabel.get(trendBucketKey(new Date(r.created_at)))
+    if (!bucket) return
+    if (new Date(r.return_verified_at) > new Date(r.end_datetime)) {
+      bucket.late++
+    } else {
+      bucket.onTime++
+    }
+  })
 
   // 2. Kategori Terbanyak
   const categoryMap = new Map<string, number>()
