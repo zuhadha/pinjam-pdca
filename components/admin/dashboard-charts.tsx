@@ -60,6 +60,7 @@ interface DashboardChartsProps {
   periodLabel: string
   trendData: { date: string; total: number; onTime: number; late: number; range?: string }[]
   trendDescription?: string
+  lateTrendData: { date: string; total: number }[]
   categoryData: { name: string; value: number }[]
   topItemsData: { name: string; value: number }[]
   deptData: { name: string; value: number }[]
@@ -70,6 +71,7 @@ export function DashboardCharts({
   periodLabel,
   trendData,
   trendDescription,
+  lateTrendData,
   categoryData,
   topItemsData,
   deptData,
@@ -77,6 +79,14 @@ export function DashboardCharts({
 }: DashboardChartsProps) {
   const [showReturnStatus, setShowReturnStatus] = useState(true)
   const [showTotal, setShowTotal] = useState(true)
+  const [showScaleControls, setShowScaleControls] = useState(false)
+  const maxTotal = Math.max(0, ...trendData.map((d) => Number(d.total) || 0))
+  const maxReturn = Math.max(
+    0,
+    ...trendData.map((d) => Math.max(Number(d.onTime) || 0, Number(d.late) || 0))
+  )
+  const maxAll = Math.max(maxTotal, maxReturn)
+  const [yScaleMax, setYScaleMax] = useState<number>(Math.max(10, Math.ceil(maxAll * 1.25)))
 
   return (
     <div className="flex flex-col gap-6 mt-8">
@@ -94,6 +104,31 @@ export function DashboardCharts({
                 </CardDescription>
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowScaleControls((v) => !v)}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    showScaleControls
+                      ? 'border-gray-300 bg-gray-100 text-gray-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-500'
+                  }`}
+                >
+                  Atur Skala
+                </button>
+                {showScaleControls && (
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    Skala Y
+                    <input
+                      type="range"
+                      min={10}
+                      max={Math.max(10, maxAll * 4, 10)}
+                      value={Math.max(10, yScaleMax)}
+                      onChange={(e) => setYScaleMax(Math.max(10, Number(e.target.value)))}
+                      className="w-28 accent-blue-600"
+                      title="Geser skala grafik (Total & Return)"
+                    />
+                  </label>
+                )}
                 <button
                   type="button"
                   role="switch"
@@ -148,7 +183,7 @@ export function DashboardCharts({
           <CardContent>
             <div className="h-[280px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={trendData} margin={{ top: 24, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={trendData} margin={{ top: 25, right: 15, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -158,7 +193,7 @@ export function DashboardCharts({
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} tickMargin={10} minTickGap={20} />
                   {showTotal && (
-                    <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                    <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} domain={[0, yScaleMax]} />
                   )}
                   {showReturnStatus && (
                     <YAxis
@@ -169,6 +204,7 @@ export function DashboardCharts({
                       fontSize={12}
                       allowDecimals={false}
                       width={30}
+                      domain={[0, yScaleMax]}
                     />
                   )}
                   <Tooltip
@@ -283,6 +319,51 @@ export function DashboardCharts({
         </Card>
       </div>
 
+      {/* ROW 1.5 — duplicate dari Tren Peminjaman, y = jumlah pengembalian terlambat */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold text-gray-800">Tren Pengembalian Terlambat</CardTitle>
+          <CardDescription>Jumlah pengembalian terlambat dari waktu ke waktu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[280px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={lateTrendData} margin={{ top: 25, right: 15, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} tickMargin={10} minTickGap={20} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorLate)"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#ef4444' }}
+                >
+                  <LabelList
+                    dataKey="total"
+                    position="top"
+                    fontSize={16}
+                    fill="#ef4444"
+                  />
+                </Area>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ROW 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 3. Departemen Teraktif */}
@@ -302,7 +383,7 @@ export function DashboardCharts({
                     cursor={{ fill: '#f3f4f6' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={30} label={{ position: 'right', fontSize: 12, fill: '#6b7280' }}>
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={30} label={{ position: 'right', fontSize: 16, fill: '#6b7280' }}>
                     {deptData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -330,6 +411,7 @@ export function DashboardCharts({
                     outerRadius={75}
                     dataKey="value"
                     stroke="none"
+                    label={{ fontSize: 16, fontWeight: 600, fill: '#374151' }}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -364,6 +446,7 @@ export function DashboardCharts({
                     paddingAngle={3}
                     dataKey="value"
                     stroke="none"
+                    label={{ fontSize: 16, fontWeight: 600, fill: '#374151' }}
                   >
                     {punctualityData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={PUNCTUALITY_COLORS[index % PUNCTUALITY_COLORS.length]} />

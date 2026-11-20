@@ -82,6 +82,18 @@ export default async function AdminDashboardPage({
   // -- Data Aggregation for Charts --
   const chartData = filteredRequests
 
+  // Pengembalian terlambat: sudah diverifikasi melewati deadline,
+  // atau masih dipinjam tapi sudah lewat deadline.
+  const isLateReturn = (req: any) => {
+    if (req.return_verified_at && req.end_datetime) {
+      return new Date(req.return_verified_at) > new Date(req.end_datetime)
+    }
+    if (req.status === 'borrowed' && req.end_datetime) {
+      return new Date() > new Date(req.end_datetime)
+    }
+    return false
+  }
+
   // 1. Tren Peminjaman — mengikuti filter & mode tampilan
   // Mingguan: per nomor minggu. Bulanan: per tanggal jika 1 bulan dipilih, selain itu per bulan.
   let trendData: { date: string; total: number; onTime: number; late: number; range?: string }[]
@@ -154,6 +166,8 @@ export default async function AdminDashboardPage({
     }
   })
 
+  const lateTrendData = trendData.map((t) => ({ date: t.date, total: t.late }))
+
   // 2. Kategori Terbanyak
   const categoryMap = new Map<string, number>()
   chartData.forEach((req: any) => {
@@ -195,21 +209,10 @@ export default async function AdminDashboardPage({
   let onTime = 0
   let late = 0
   chartData.forEach((req: any) => {
-    if (req.return_verified_at && req.end_datetime) {
-      const returnDate = new Date(req.return_verified_at)
-      const endDate = new Date(req.end_datetime)
-      if (returnDate > endDate) {
-        late++
-      } else {
-        onTime++
-      }
-    } else if (req.status === 'borrowed' && req.end_datetime) {
-      // Jika masih dipinjam tapi sudah lewat deadline
-      const today = new Date()
-      const endDate = new Date(req.end_datetime)
-      if (today > endDate) {
-        late++
-      }
+    if (isLateReturn(req)) {
+      late++
+    } else if (req.return_verified_at && req.end_datetime) {
+      onTime++
     }
   })
   
@@ -309,6 +312,7 @@ export default async function AdminDashboardPage({
         periodLabel={periodLabel}
         trendData={trendData}
         trendDescription={trendDescription}
+        lateTrendData={lateTrendData}
         categoryData={categoryData}
         topItemsData={topItemsData}
         deptData={deptData}
