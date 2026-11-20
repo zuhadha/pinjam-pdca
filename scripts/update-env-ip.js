@@ -58,34 +58,10 @@ console.log("");
 
 process.env.NODE_OPTIONS = "--max-old-space-size=4096";
 
-const concurrentlyBin = path.resolve(
-  __dirname,
-  "../node_modules/.bin/concurrently"
-);
-
-// const child = spawn(
-//   concurrentlyBin,
-//   [
-//     "--kill-others",
-//     "--names",
-//     "NEXT,CRON",
-//     "--prefix-colors",
-//     "blue,yellow",
-//     `node node_modules/next/dist/bin/next dev --hostname ${ip} --port ${port}`,
-//     "node scripts/cron.js",
-//   ],
-//   {
-//     cwd: path.resolve(__dirname, ".."),
-//     stdio: "inherit",
-//     shell: true,
-//     env: process.env,
-//   }
-// );
-
 const child = spawn(
-  "npx",
+  process.execPath,
   [
-    "concurrently",
+    path.resolve(__dirname, "../node_modules/concurrently/dist/bin/concurrently.js"),
     "--kill-others",
     "--names",
     "NEXT,CRON",

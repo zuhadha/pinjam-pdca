@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,26 +32,28 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { verifyReturn, verifyReturnsBulk, assignUnitsToRequest } from '@/lib/actions/admin-actions'
-import { CheckCircle, Tag, PlusCircle, X, Eye } from 'lucide-react'
+import { CheckCircle, Tag, X, Eye } from 'lucide-react'
 import { Pagination } from '@/components/ui/pagination'
 import { useSessionState } from '@/lib/hooks/use-session-state'
 
 interface RequestsTableProps {
-  requests: any[]
+  requests: Array<Record<string, any>>
   isPermanentView?: boolean // Hide Durasi, Status, Aksi for permanent requests
 }
 
 export function RequestsTable({ requests, isPermanentView = false }: RequestsTableProps) {
   // Kept in sessionStorage so filters survive navigating away and back
-  const [filters, setFilters] = useSessionState(
+  type RequestsTableFilters = { search: string; status: string; location: string; returnStatus: string; page: number }
+  const [filters, setFilters] = useSessionState<RequestsTableFilters>(
     isPermanentView ? 'admin-permanent-requests-filters' : 'admin-requests-filters',
-    { search: '', status: 'all', location: 'all', page: 1 }
+    { search: '', status: 'all', location: 'all', returnStatus: 'all', page: 1 }
   )
-  const { search: searchQuery, status: statusFilter, location: usageLocationFilter } = filters
-  const setSearchQuery = (search: string) => setFilters(prev => ({ ...prev, search, page: 1 }))
-  const setStatusFilter = (status: string) => setFilters(prev => ({ ...prev, status, page: 1 }))
-  const setUsageLocationFilter = (location: string) => setFilters(prev => ({ ...prev, location, page: 1 }))
-  const setCurrentPage = (page: number) => setFilters(prev => ({ ...prev, page }))
+  const { search: searchQuery, status: statusFilter, location: usageLocationFilter, returnStatus: returnStatusFilter } = filters
+  const setSearchQuery = (search: string) => setFilters((prev) => ({ ...prev, search, page: 1 }))
+  const setStatusFilter = (status: string) => setFilters((prev) => ({ ...prev, status, page: 1 }))
+  const setUsageLocationFilter = (location: string) => setFilters((prev) => ({ ...prev, location, page: 1 }))
+  const setReturnStatusFilter = (returnStatus: string) => setFilters((prev) => ({ ...prev, returnStatus, page: 1 }))
+  const setCurrentPage = (page: number) => setFilters((prev) => ({ ...prev, page }))
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -159,6 +161,16 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     return Array.from(locations).sort()
   }, [requests])
 
+  const isLateReturn = (request: any) => {
+    if (request.return_verified_at && request.end_datetime) {
+      return new Date(request.return_verified_at) > new Date(request.end_datetime)
+    }
+    if (request.status === 'borrowed' && request.end_datetime) {
+      return new Date() > new Date(request.end_datetime)
+    }
+    return false
+  }
+
   // Filter and search logic
   const filteredRequests = useMemo(() => {
     return requests.filter(request => {
@@ -176,6 +188,17 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
         if (request.usage_location !== usageLocationFilter) {
           return false
         }
+      }
+
+      // Return status filter
+      if (returnStatusFilter !== 'all') {
+        const isDeclared = !!request.return_declared_at && !request.return_verified_at
+        const isBorrowed = request.status === 'borrowed' && !request.return_declared_at && !request.return_verified_at
+        const late = isLateReturn(request)
+        if (returnStatusFilter === 'late' && !late) return false
+        if (returnStatusFilter === 'on_time' && (!request.return_verified_at || late)) return false
+        if (returnStatusFilter === 'waiting' && !isDeclared) return false
+        if (returnStatusFilter === 'not_returned' && !isBorrowed) return false
       }
 
       // Search filter
@@ -196,7 +219,7 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
 
       return true
     })
-  }, [requests, statusFilter, usageLocationFilter, searchQuery])
+  }, [requests, statusFilter, usageLocationFilter, returnStatusFilter, searchQuery])
 
   // Pagination (clamped in case the saved page no longer exists)
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
@@ -205,6 +228,31 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
     const startIndex = (currentPage - 1) * itemsPerPage
     return filteredRequests.slice(startIndex, startIndex + itemsPerPage)
   }, [filteredRequests, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, usageLocationFilter, returnStatusFilter, searchQuery])
+
+  const getReturnStatusBadge = (request: any) => {
+    if (request.return_verified_at) {
+      return isLateReturn(request)
+        ? <Badge variant="destructive">Terlambat</Badge>
+        : <Badge variant="success">Tepat Waktu</Badge>
+    }
+    if (request.return_declared_at && !request.return_verified_at) {
+      return <Badge variant="blue">Menunggu Verifikasi</Badge>
+    }
+    if (request.status === 'borrowed') {
+      return isLateReturn(request)
+        ? <Badge variant="destructive">Terlambat</Badge>
+        : <Badge variant="warning">Belum Dikembalikan</Badge>
+    }
+    if (request.status === 'returned') {
+      return <Badge variant="gray">Dikembalikan</Badge>
+    }
+    return <Badge variant="gray">-</Badge>
+  }
 
   const getStatusBadge = (request: any) => {
     const needsVerification = !request.is_permanent && request.return_declared_at && !request.return_verified_at
@@ -302,6 +350,18 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
             ))}
           </SelectContent>
         </Select>
+        <Select value={returnStatusFilter} onValueChange={setReturnStatusFilter}>
+          <SelectTrigger className="sm:w-[220px]">
+            <SelectValue placeholder="Filter Status Return" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Status Return</SelectItem>
+            <SelectItem value="not_returned">Belum Dikembalikan</SelectItem>
+            <SelectItem value="waiting">Menunggu Verifikasi</SelectItem>
+            <SelectItem value="on_time">Tepat Waktu</SelectItem>
+            <SelectItem value="late">Terlambat</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -315,13 +375,14 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
               {/* <TableHead className="w-[160px]">Keperluan</TableHead> */}
               {!isPermanentView && <TableHead className="w-[140px]">Durasi</TableHead>}
               {!isPermanentView && <TableHead className="w-[160px]">Status</TableHead>}
+              {!isPermanentView && <TableHead className="w-[160px]">Status Return</TableHead>}
               {!isPermanentView && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={isPermanentView ? 4 : 8} className="text-center py-8 text-gray-500">
                   Tidak ada data yang ditemukan
                 </TableCell>
               </TableRow>
@@ -385,6 +446,9 @@ export function RequestsTable({ requests, isPermanentView = false }: RequestsTab
                           )}
                         </div>
                       </TableCell>
+                    )}
+                    {!isPermanentView && (
+                      <TableCell>{getReturnStatusBadge(request)}</TableCell>
                     )}
                     {!isPermanentView && (
                       <TableCell className="text-right">
