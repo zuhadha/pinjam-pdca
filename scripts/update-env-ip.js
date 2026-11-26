@@ -5,20 +5,60 @@ const { spawn } = require("child_process");
 
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
+  if (!interfaces) return "localhost";
+
+  // 1. Pola nama adapter fisik yang diprioritaskan
+  const preferredPatterns = [
+    /^Ethernet/i,
+    /^Wi-Fi/i,
+    /^WLAN/i,
+    /^Local Area Connection/i,
+    /^en\d/i,      // macOS/Linux (en0, en1)
+    /^eth\d/i,     // Linux (eth0)
+    /^wlan\d/i     // Linux (wlan0)
+  ];
+
+  // 2. Pola nama adapter virtual yang HARUS diabaikan
+  const virtualPatterns = [
+    /^vEthernet/i,
+    /^VMware/i,
+    /^VirtualBox/i,
+    /^Hyper-V/i,
+    /^WSL/i,
+    /^docker/i,
+    /^br-/i,
+    /^vnet/i,
+    /^utun/i,
+    /^awdl/i,
+    /^llw/i
+  ];
+
+  let fallbackIp = "localhost";
 
   for (const name of Object.keys(interfaces)) {
+    // Abaikan jika nama adapter cocok dengan pola virtual
+    if (virtualPatterns.some(pattern => pattern.test(name))) {
+      continue;
+    }
+
     for (const iface of interfaces[name]) {
       if (
-        iface.family === "IPv4" &&
+        (iface.family === "IPv4" || iface.family === 4) && // Support Node.js v18+
         !iface.internal &&
-        !iface.address.startsWith("169.254")
+        !iface.address.startsWith("169.254") // Abaikan link-local IP
       ) {
-        return iface.address;
+        // Jika ini adalah adapter fisik yang diprioritaskan, langsung gunakan
+        if (preferredPatterns.some(pattern => pattern.test(name))) {
+          return iface.address;
+        }
+        
+        // Jika bukan prioritas utama, simpan sebagai cadangan (fallback)
+        fallbackIp = iface.address;
       }
     }
   }
 
-  return "localhost";
+  return fallbackIp;
 }
 
 const ip = getLocalIp();

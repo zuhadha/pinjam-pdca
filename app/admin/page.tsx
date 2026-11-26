@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
 import { MonthFilter } from '@/components/admin/month-filter'
-import { RoomDashboard } from '@/components/admin/rooms/room-dashboard'
+// import { RoomDashboard } from '@/components/admin/rooms/room-dashboard'
 import {
   MONTH_LONG,
   formatWeekRange,
@@ -320,9 +320,9 @@ export default async function AdminDashboardPage({
       />
 
       {/* Room bookings, same period filter */}
-      <div className="border-t border-gray-200 pt-8">
+      {/* <div className="border-t border-gray-200 pt-8">
         <RoomDashboard filter={{ year: selectedYear, months: selectedMonths, weeks: selectedWeeks, view: viewMode }} />
-      </div>
+      </div> */}
 
       {/* Recent Requests */}
       {/* <Card>

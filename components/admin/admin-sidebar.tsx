@@ -39,14 +39,14 @@ const adminNavigation = [
   { name: 'Kelola Barang', href: '/admin/items', icon: Package },
   { name: 'Kelola Peminjaman', href: '/admin/requests', icon: FileText },
   { name: 'Kelola Permintaan', href: '/admin/permanent-requests', icon: FileText },
-  { name: 'Kelola Booking Ruangan', href: '/admin/room-bookings', icon: CalendarCheck },
-  { name: 'Kelola Ruangan', href: '/admin/rooms', icon: DoorOpen },
+  // { name: 'Kelola Booking Ruangan', href: '/admin/room-bookings', icon: CalendarCheck },
+  // { name: 'Kelola Ruangan', href: '/admin/rooms', icon: DoorOpen },
 ]
 
 const externalNavigation = [
   { name: 'Beranda Utama', href: '/', icon: Home },
   { name: 'Katalog Barang', href: '/catalog', icon: ShoppingBag },
-  { name: 'Jadwal Ruangan', href: '/rooms', icon: CalendarDays },
+  // { name: 'Jadwal Ruangan', href: '/rooms', icon: CalendarDays },
 ]
 
 export function AdminSidebar({ user }: AdminSidebarProps) {

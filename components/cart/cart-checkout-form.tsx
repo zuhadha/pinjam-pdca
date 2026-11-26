@@ -304,7 +304,7 @@ export function CartCheckoutForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Fill borrower, schedule, location and purpose from a room booking */}
-        {isBorrowable && <RoomAgendaPicker onPick={applyRoomAgenda} />}
+        {/* {isBorrowable && <RoomAgendaPicker onPick={applyRoomAgenda} />} */}
 
         {/* Section: Identitas Peminjam */}
         <div>

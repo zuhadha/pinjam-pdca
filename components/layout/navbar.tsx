@@ -44,7 +44,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Beranda' },
     { href: '/catalog', label: 'Katalog' },
-    { href: '/rooms', label: 'Ruangan' },
+    // { href: '/rooms', label: 'Ruangan' },
   ]
 
   if (user) {

@@ -485,7 +485,7 @@ export function BorrowModal({ initialItems = [], onClose }: BorrowModalProps) {
             </div>
 
             {/* Fill borrower, schedule, location and purpose from a room booking */}
-            {isBorrowable && <RoomAgendaPicker onPick={applyRoomAgenda} />}
+            {/* {isBorrowable && <RoomAgendaPicker onPick={applyRoomAgenda} />} */}
 
             {/* Borrower Identity */}
             <div className="space-y-3">
